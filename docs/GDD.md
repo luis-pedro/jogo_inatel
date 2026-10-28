@@ -40,6 +40,7 @@ Valores iniciais provisórios (em `scripts/autoload/game_state.gd`): **50 comida
 
 - Cada **casa** construída gera **2 aldeões** (Pawns).
 - O jogo começa com 1 casa → 2 aldeões.
+- Sem tarefa, o aldeão passeia: anda até um ponto perto de casa, para (idle) e repete.
 - Aldeões coletam recursos e constroem estruturas **[A definir]**.
 
 ## 5. Construções

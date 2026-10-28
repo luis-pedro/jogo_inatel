@@ -82,6 +82,12 @@ func place(data: BuildingData, cell: Vector2i, variant := 0) -> Building:
 	return building
 
 
+## Se um aldeão pode pisar neste ponto do mundo: dentro da ilha e fora de prédios.
+func is_point_walkable(point: Vector2) -> bool:
+	var cell := world.world_to_cell(point)
+	return world.is_buildable(cell) and not _occupied.has(cell)
+
+
 func _can_place(data: BuildingData, cell: Vector2i) -> bool:
 	if not GameState.can_afford(data.cost):
 		return false
