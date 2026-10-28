@@ -25,6 +25,7 @@ Scripts ligados a uma única cena podem ficar na mesma pasta da cena (`house.tsc
 | Câmera | `scripts/camera/game_camera.gd` | Pan, zoom e limites do mapa. |
 | Mapa | `scripts/world/world.gd` | Ilha de grama (TileMapLayer montado por código), conversão célula↔mundo (grade de 64 px) e área construível. |
 | Construção | `scripts/buildings/build_manager.gd`, `building.gd`, `building_data.gd` | Fantasma na grade, validação, custo e criação. Cada tipo de prédio é um `BuildingData` em `data/buildings/*.tres`. |
+| Aldeões | `scripts/units/pawn.gd` | Máquina de estados IDLE ⇄ WALK com animações idle/run; sorteia destinos perto de casa e valida o caminho. |
 | Interface | `scripts/ui/hud.gd` | Recursos, população e botão de construir. |
 
 Para adicionar um prédio novo: duplique `data/buildings/house.tres`, troque `textures` (uma por orientação), `door_directions`, `footprint` e `cost`.
