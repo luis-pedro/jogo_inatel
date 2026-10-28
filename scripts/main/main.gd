@@ -24,6 +24,7 @@ func _ready() -> void:
 
 	_hud.build_requested.connect(_build_manager.start_placing)
 	_build_manager.placing_changed.connect(_hud.set_placing)
+	_build_manager.placing_changed.connect(func(is_placing: bool): _camera.left_drag_enabled = not is_placing)
 
 
 func _unhandled_input(event: InputEvent) -> void:

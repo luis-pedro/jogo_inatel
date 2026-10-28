@@ -81,7 +81,7 @@ Assets disponíveis em `assets/Units/<Cor> Units/`:
 
 ## 10. Interface (HUD)
 
-**Controles (v1):** WASD/setas movem a câmera · botão do meio arrasta · roda do mouse dá zoom · **B** (ou botão) constrói casa · **R** gira a casa (3 orientações) · clique esquerdo confirma · clique direito/Esc cancela · **F1** (build de debug) dá +50 de cada recurso.
+**Controles (v1):** WASD/setas movem a câmera · arrastar com o botão esquerdo ou do meio move a câmera (o esquerdo só fora do modo de construção) · roda do mouse dá zoom · **B** (ou botão) constrói casa · **R** gira a casa (3 orientações) · clique esquerdo confirma · clique direito/Esc cancela · **F1** (build de debug) dá +50 de cada recurso.
 
 - Contadores de recursos (comida, ouro, madeira) e população.
 - Menu de construção.
