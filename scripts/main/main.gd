@@ -35,10 +35,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			GameState.add_resource(type, 50)
 
 
-## Cada casa gera seus aldeões, parados em frente à porta.
+## Cada casa gera seus aldeões, parados em frente à porta (o lado depende da orientação).
 func _on_building_placed(building: Building) -> void:
-	var door := building.position + Vector2(building.data.footprint.x * World.TILE_SIZE / 2.0, 36)
+	var size := Vector2(building.data.footprint * World.TILE_SIZE)
+	var center := building.position + Vector2(size.x / 2.0, -size.y / 2.0)
+	var direction := Vector2(building.data.door_directions[building.variant])
+	# Ponto na borda da área ocupada, saindo da porta, mais uma folga.
+	var door := center + direction * (size / 2.0 + Vector2(36, 36))
+	var along_wall := Vector2(-direction.y, direction.x)
 	for i in GameState.VILLAGERS_PER_HOUSE:
 		var pawn: Pawn = pawn_scene.instantiate()
-		pawn.position = door + Vector2((i - 0.5) * 56, 0)
+		pawn.position = door + along_wall * (i - 0.5) * 56
 		_entities.add_child(pawn)

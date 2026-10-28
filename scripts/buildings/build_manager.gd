@@ -16,13 +16,14 @@ const INVALID_COLOR := Color(1.0, 0.4, 0.4, 0.7)
 var _occupied: Dictionary = {}  # Vector2i -> true
 var _current: BuildingData
 var _ghost: Building
+var _variant := 0  # orientação escolhida com R
 
 
 func _process(_delta: float) -> void:
 	if _ghost == null:
 		return
 	var cell := _cell_under_mouse(_current)
-	_ghost.setup(_current, cell, World.TILE_SIZE)
+	_ghost.setup(_current, cell, World.TILE_SIZE, _variant)
 	_ghost.modulate = VALID_COLOR if _can_place(_current, cell) else INVALID_COLOR
 
 
@@ -31,6 +32,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("cancel_build"):
 		stop_placing()
+	elif event.is_action_pressed("rotate_building"):
+		_variant = (_variant + 1) % _current.textures.size()
 	elif event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if try_place(_current, _cell_under_mouse(_current)) \
@@ -45,7 +48,7 @@ func start_placing(data: BuildingData) -> void:
 	stop_placing()
 	_current = data
 	_ghost = BUILDING_SCENE.instantiate()
-	_ghost.setup(data, _cell_under_mouse(data), World.TILE_SIZE)
+	_ghost.setup(data, _cell_under_mouse(data), World.TILE_SIZE, _variant)
 	add_child(_ghost)
 	placing_changed.emit(true)
 
@@ -63,15 +66,15 @@ func stop_placing() -> void:
 func try_place(data: BuildingData, cell: Vector2i) -> bool:
 	if not _can_place(data, cell) or not GameState.spend(data.cost):
 		return false
-	place(data, cell)
+	place(data, cell, _variant)
 	GameState.add_house()
 	return true
 
 
 ## Põe o prédio no mapa sem custo nem validação (ex.: casa inicial).
-func place(data: BuildingData, cell: Vector2i) -> Building:
+func place(data: BuildingData, cell: Vector2i, variant := 0) -> Building:
 	var building: Building = BUILDING_SCENE.instantiate()
-	building.setup(data, cell, World.TILE_SIZE)
+	building.setup(data, cell, World.TILE_SIZE, variant)
 	buildings_root.add_child(building)
 	for covered in _footprint_cells(data, cell):
 		_occupied[covered] = true

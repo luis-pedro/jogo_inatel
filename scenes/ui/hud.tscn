@@ -39,7 +39,7 @@ mouse_filter = 2
 [node name="HintLabel" type="Label" parent="Margin/Bottom"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Clique esquerdo: construir   |   Clique direito / Esc: cancelar"
+text = "R: girar   |   Clique esquerdo: construir   |   Clique direito / Esc: cancelar"
 
 [node name="BuildHouseButton" type="Button" parent="Margin/Bottom"]
 unique_name_in_owner = true

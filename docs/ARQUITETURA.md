@@ -27,7 +27,7 @@ Scripts ligados a uma única cena podem ficar na mesma pasta da cena (`house.tsc
 | Construção | `scripts/buildings/build_manager.gd`, `building.gd`, `building_data.gd` | Fantasma na grade, validação, custo e criação. Cada tipo de prédio é um `BuildingData` em `data/buildings/*.tres`. |
 | Interface | `scripts/ui/hud.gd` | Recursos, população e botão de construir. |
 
-Para adicionar um prédio novo: duplique `data/buildings/house.tres`, troque textura, `footprint` e `cost`.
+Para adicionar um prédio novo: duplique `data/buildings/house.tres`, troque `textures` (uma por orientação), `door_directions`, `footprint` e `cost`.
 
 ## Autoloads
 
