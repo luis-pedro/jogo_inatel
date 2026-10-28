@@ -4,7 +4,7 @@
 
 | Decisão | Motivo |
 |---|---|
-| **Godot 4.6**, GDScript | Versão que a equipe já usa. |
+| **Godot 4.7**, GDScript | Versão que a equipe já usa. |
 | Renderer **Compatibility** (OpenGL) | Jogo 2D não precisa do Forward+; roda em PCs mais fracos (ex.: máquinas da feira) e permite exportar para web (itch.io). |
 | Filtro de textura **Nearest** | Mantém o pixel art nítido. |
 | Viewport 1280×720, stretch `canvas_items` / `expand` | Escala para qualquer resolução sem distorcer. |
@@ -17,6 +17,17 @@
 - `scripts/autoload/` — singletons globais.
 
 Scripts ligados a uma única cena podem ficar na mesma pasta da cena (`house.tscn` + `house.gd`).
+
+## Sistemas principais
+
+| Sistema | Arquivos | Descrição |
+|---|---|---|
+| Câmera | `scripts/camera/game_camera.gd` | Pan, zoom e limites do mapa. |
+| Mapa | `scripts/world/world.gd` | Ilha de grama (TileMapLayer montado por código), conversão célula↔mundo (grade de 64 px) e área construível. |
+| Construção | `scripts/buildings/build_manager.gd`, `building.gd`, `building_data.gd` | Fantasma na grade, validação, custo e criação. Cada tipo de prédio é um `BuildingData` em `data/buildings/*.tres`. |
+| Interface | `scripts/ui/hud.gd` | Recursos, população e botão de construir. |
+
+Para adicionar um prédio novo: duplique `data/buildings/house.tres`, troque textura, `footprint` e `cost`.
 
 ## Autoloads
 
