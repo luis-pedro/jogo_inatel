@@ -1,0 +1,21 @@
+# Godot 4
+.godot/
+/android/
+*.tmp
+
+# Builds exportados (publicar no itch.io / GitHub Releases, não no repo)
+/builds/
+/export/
+export_credentials.cfg
+
+# Mono / C# (caso venha a ser usado)
+.mono/
+data_*/
+mono_crash.*.json
+
+# Sistema operacional / editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

@@ -1,0 +1,13 @@
+# Normaliza finais de linha (evita diffs falsos entre Windows e outros SOs)
+* text=auto eol=lf
+
+# Binários
+*.png binary
+*.jpg binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+*.ttf binary
+*.otf binary
+*.aseprite binary
+*.ase binary
