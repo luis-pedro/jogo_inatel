@@ -3,18 +3,19 @@ extends Node2D
 ## Controla a construção: fantasma que segue o mouse na grade, validação e criação do prédio.
 
 signal placing_changed(is_placing: bool)
+signal building_placed(building: Building)
 
 const BUILDING_SCENE := preload("res://scenes/buildings/building.tscn")
 const VALID_COLOR := Color(0.6, 1.0, 0.6, 0.7)
 const INVALID_COLOR := Color(1.0, 0.4, 0.4, 0.7)
 
 @export var world: World
+## Nó (com y_sort) onde os prédios são criados, compartilhado com as unidades.
+@export var buildings_root: Node2D
 
 var _occupied: Dictionary = {}  # Vector2i -> true
 var _current: BuildingData
 var _ghost: Building
-
-@onready var _buildings: Node2D = $Buildings
 
 
 func _process(_delta: float) -> void:
@@ -71,9 +72,10 @@ func try_place(data: BuildingData, cell: Vector2i) -> bool:
 func place(data: BuildingData, cell: Vector2i) -> Building:
 	var building: Building = BUILDING_SCENE.instantiate()
 	building.setup(data, cell, World.TILE_SIZE)
-	_buildings.add_child(building)
+	buildings_root.add_child(building)
 	for covered in _footprint_cells(data, cell):
 		_occupied[covered] = true
+	building_placed.emit(building)
 	return building
 
 

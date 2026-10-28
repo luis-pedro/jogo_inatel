@@ -34,7 +34,7 @@ Coletar recursos ──► Construir / Recrutar ──► Expandir território
 | Ouro | Recrutar unidades **[A definir]** | Minas de ouro | `Terrain/Resources/Gold` |
 | Madeira | Construções | Árvores | `Terrain/Resources/Wood` |
 
-Valores iniciais provisórios (em `scripts/autoload/game_state.gd`): **50 comida, 20 ouro, 30 madeira**.
+Valores iniciais provisórios (em `scripts/autoload/game_state.gd`): **50 comida, 20 ouro, 100 madeira**.
 
 ## 4. População
 
