@@ -1,23 +1,23 @@
-﻿# Jogo Inatel *(nome provisÃ³rio)*
+# Jogo Inatel *(nome provisório)*
 
-Jogo 2D de **tower defense baseado em coleta de recursos e expansÃ£o de reino**, desenvolvido em **Godot 4.6** para a **FETIN** (Feira TecnolÃ³gica do Inatel).
+Jogo 2D de **tower defense baseado em coleta de recursos e expansão de reino**, desenvolvido em **Godot 4.6** para a **FETIN** (Feira Tecnológica do Inatel).
 
-Inspirado em *Kingdoms and Castles* e *Northgard*: o jogador comeÃ§a com uma casa e dois aldeÃµes, coleta comida, ouro e madeira, expande o reino construindo novas casas e estruturas, recruta unidades para proteger e ampliar o territÃ³rio e defende-se de ondas de inimigos.
+Inspirado em *Kingdoms and Castles* e *Northgard*: o jogador começa com uma casa e dois aldeões, coleta comida, ouro e madeira, expande o reino construindo novas casas e estruturas, recruta unidades para proteger e ampliar o território e defende-se de ondas de inimigos.
 
-> ðŸš§ Projeto em fase inicial de desenvolvimento.
+> 🚧 Projeto em fase inicial de desenvolvimento.
 
-## SumÃ¡rio
+## Sumário
 
 - [Como rodar](#como-rodar)
 - [Estrutura do projeto](#estrutura-do-projeto)
-- [DocumentaÃ§Ã£o](#documentaÃ§Ã£o)
+- [Documentação](#documentação)
 - [Equipe](#equipe)
-- [CrÃ©ditos](#crÃ©ditos)
+- [Créditos](#créditos)
 
 ## Como rodar
 
-1. Instale o [Godot 4.6](https://godotengine.org/download) (versÃ£o padrÃ£o, nÃ£o a .NET).
-2. Clone o repositÃ³rio:
+1. Instale o [Godot 4.6](https://godotengine.org/download) (versão padrão, não a .NET).
+2. Clone o repositório:
    ```bash
    git clone https://github.com/luis-pedro/jogo_inatel.git
    ```
@@ -28,25 +28,25 @@ Inspirado em *Kingdoms and Castles* e *Northgard*: o jogador comeÃ§a com uma c
 
 ```
 jogo_inatel/
-â”œâ”€â”€ assets/            # Sprites do pack Tiny Swords (Pixel Frog)
-â”‚   â”œâ”€â”€ Buildings/     # ConstruÃ§Ãµes (5 cores de facÃ§Ã£o)
-â”‚   â”œâ”€â”€ Particle FX/   # Poeira, explosÃ£o, fogo, Ã¡gua
-â”‚   â”œâ”€â”€ Terrain/       # Tileset, decoraÃ§Ãµes e recursos (ouro, carne, madeira)
-â”‚   â”œâ”€â”€ UI Elements/   # BotÃµes, barras, banners, Ã­cones, cursores
-â”‚   â””â”€â”€ Units/         # Unidades (Pawn, Warrior, Archer, Lancer, Monk)
-â”œâ”€â”€ scenes/            # Cenas (.tscn), organizadas por funcionalidade
-â”‚   â””â”€â”€ main/          # Cena principal
-â”œâ”€â”€ scripts/           # Scripts GDScript (.gd)
-â”‚   â””â”€â”€ autoload/      # Singletons globais (ex.: GameState)
-â””â”€â”€ docs/              # DocumentaÃ§Ã£o do projeto
+├── assets/            # Sprites do pack Tiny Swords (Pixel Frog)
+│   ├── Buildings/     # Construções (5 cores de facção)
+│   ├── Particle FX/   # Poeira, explosão, fogo, água
+│   ├── Terrain/       # Tileset, decorações e recursos (ouro, carne, madeira)
+│   ├── UI Elements/   # Botões, barras, banners, ícones, cursores
+│   └── Units/         # Unidades (Pawn, Warrior, Archer, Lancer, Monk)
+├── scenes/            # Cenas (.tscn), organizadas por funcionalidade
+│   └── main/          # Cena principal
+├── scripts/           # Scripts GDScript (.gd)
+│   └── autoload/      # Singletons globais (ex.: GameState)
+└── docs/              # Documentação do projeto
 ```
 
-## DocumentaÃ§Ã£o
+## Documentação
 
-| Documento | ConteÃºdo |
+| Documento | Conteúdo |
 |---|---|
-| [docs/GDD.md](docs/GDD.md) | Game Design Document: conceito, mecÃ¢nicas, recursos, unidades, inimigos |
-| [docs/ARQUITETURA.md](docs/ARQUITETURA.md) | OrganizaÃ§Ã£o do cÃ³digo, convenÃ§Ãµes e decisÃµes tÃ©cnicas |
+| [docs/GDD.md](docs/GDD.md) | Game Design Document: conceito, mecânicas, recursos, unidades, inimigos |
+| [docs/ARQUITETURA.md](docs/ARQUITETURA.md) | Organização do código, convenções e decisões técnicas |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Fluxo de trabalho com Git, branches, commits e Pull Requests |
 
 ## Equipe
@@ -56,7 +56,7 @@ jogo_inatel/
 | Luis Pedro Costa | [@luis-pedro](https://github.com/luis-pedro) |
 | *(a definir)* | |
 
-## CrÃ©ditos
+## Créditos
 
 - **Arte:** [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords), por **Pixel Frog**.
 - **Engine:** [Godot Engine](https://godotengine.org/).
