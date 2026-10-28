@@ -9,7 +9,7 @@
 |---|---|
 | **Gênero** | Tower defense + construção de reino / gestão de recursos |
 | **Perspectiva** | 2D top-down |
-| **Engine** | Godot 4.6 |
+| **Engine** | Godot 4.7 |
 | **Plataforma alvo** | PC (Windows); build web para o itch.io **[A definir]** |
 | **Referências** | *Kingdoms and Castles*, *Northgard* |
 | **Objetivo do projeto** | Apresentação e competição na FETIN |
@@ -34,7 +34,7 @@ Coletar recursos ──► Construir / Recrutar ──► Expandir território
 | Ouro | Recrutar unidades **[A definir]** | Minas de ouro | `Terrain/Resources/Gold` |
 | Madeira | Construções | Árvores | `Terrain/Resources/Wood` |
 
-Valores iniciais provisórios (em `scripts/autoload/game_state.gd`): **50 comida, 20 ouro, 30 madeira**.
+Valores iniciais provisórios (em `scripts/autoload/game_state.gd`): **50 comida, 20 ouro, 100 madeira**.
 
 ## 4. População
 
@@ -48,7 +48,7 @@ Assets disponíveis em `assets/Buildings/<Cor> Buildings/`:
 
 | Construção | Função | Custo |
 |---|---|---|
-| House (1–3) | +2 aldeões | **[A definir]** |
+| House (1–3) | +2 aldeões | 20 madeira *(provisório)* |
 | Castle | Centro do reino **[A definir]** | — |
 | Barracks | Treina Warriors / Lancers **[A definir]** | **[A definir]** |
 | Archery | Treina Archers **[A definir]** | **[A definir]** |
@@ -81,6 +81,8 @@ Assets disponíveis em `assets/Units/<Cor> Units/`:
 
 ## 10. Interface (HUD)
 
+**Controles (v1):** WASD/setas movem a câmera · botão do meio arrasta · roda do mouse dá zoom · **B** (ou botão) constrói casa · **R** gira a casa (3 orientações) · clique esquerdo confirma · clique direito/Esc cancela · **F1** (build de debug) dá +50 de cada recurso.
+
 - Contadores de recursos (comida, ouro, madeira) e população.
 - Menu de construção.
 - **[A definir]**
@@ -89,4 +91,5 @@ Assets disponíveis em `assets/Units/<Cor> Units/`:
 
 | Data | Decisão |
 |---|---|
-| 2026-10-27 | Início do projeto. Godot 4.6, assets Tiny Swords, renderer Compatibility. |
+| 2026-10-27 | Início do projeto. Godot 4.7, assets Tiny Swords, renderer Compatibility. |
+| 2026-10-28 | v1: câmera 2D (a visão diagonal vem da arte 3/4 do Tiny Swords) e construção de casas em grade de 64 px. |

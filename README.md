@@ -1,6 +1,6 @@
 # Jogo Inatel *(nome provisório)*
 
-Jogo 2D de **tower defense baseado em coleta de recursos e expansão de reino**, desenvolvido em **Godot 4.6** para a **FETIN** (Feira Tecnológica do Inatel).
+Jogo 2D de **tower defense baseado em coleta de recursos e expansão de reino**, desenvolvido em **Godot 4.7** para a **FETIN** (Feira Tecnológica do Inatel).
 
 Inspirado em *Kingdoms and Castles* e *Northgard*: o jogador começa com uma casa e dois aldeões, coleta comida, ouro e madeira, expande o reino construindo novas casas e estruturas, recruta unidades para proteger e ampliar o território e defende-se de ondas de inimigos.
 
@@ -16,7 +16,7 @@ Inspirado em *Kingdoms and Castles* e *Northgard*: o jogador começa com uma cas
 
 ## Como rodar
 
-1. Instale o [Godot 4.6](https://godotengine.org/download) (versão padrão, não a .NET).
+1. Instale o [Godot 4.7](https://godotengine.org/download) (versão padrão, não a .NET).
 2. Clone o repositório:
    ```bash
    git clone https://github.com/luis-pedro/jogo_inatel.git

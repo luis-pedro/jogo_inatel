@@ -12,7 +12,7 @@ const VILLAGERS_PER_HOUSE := 2
 const STARTING_RESOURCES := {
 	"food": 50,
 	"gold": 20,
-	"wood": 30,
+	"wood": 100,
 }
 
 var resources: Dictionary = {}
