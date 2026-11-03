@@ -42,9 +42,9 @@ Valores iniciais provisórios (em `scripts/autoload/game_state.gd`): **50 comida
 - O jogo começa com 1 casa → 2 aldeões.
 - Sem tarefa, o aldeão passeia: anda até um ponto perto de casa, para (idle) e repete.
 - O HUD mostra os aldeões **disponíveis / no total**. Aldeão ocupado com uma tarefa não está disponível.
-- **Coleta de madeira (v1):** clicar numa árvore manda o aldeão disponível com o caminho mais curto até ela. Ele corta (2 de madeira por machadada, 12 por árvore), a árvore vira toco e ele volta a ficar disponível. Só um aldeão por árvore.
+- **Coleta de madeira:** clicar numa árvore manda o aldeão disponível com o caminho mais curto até ela. Ele corta (2 de madeira por machadada) até encher a **mochila (6)** ou a árvore acabar, leva a madeira até a **porta da casa** com a animação de carregar, entrega (só então o estoque sobe) e volta à árvore enquanto houver madeira (12 por árvore). Ao acabar vira toco e ele volta a ficar disponível. Só um aldeão por árvore (reservada durante todas as viagens).
 - Coleta de comida/ouro e construção por aldeões **[A definir]**.
-- **Planejado:** aldeões terão uma mochila com capacidade. A madeira que não couber cai no mapa como item (`Terrain/Resources/Wood/Wood Resource`) e fica esperando até um aldeão buscá-la. Hoje a madeira vai direto para o estoque.
+- **Planejado:** a mochila já existe (capacidade fixa em `pawn.gd`); falta a madeira que não couber cair no mapa como item (`Terrain/Resources/Wood/Wood Resource`) e fica esperando até um aldeão buscá-la. Hoje a madeira vai direto para o estoque.
 
 ## 5. Construções
 

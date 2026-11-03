@@ -1,13 +1,15 @@
 class_name Pawn
 extends Node2D
-## Aldeão. Sem tarefa, passeia pela vila (idle ⇄ andar). Pode receber a tarefa de cortar uma árvore:
-## vai até ela, corta até acabar a madeira e volta a ficar disponível.
+## Aldeão. Sem tarefa, passeia pela vila (idle ⇄ andar). Com a tarefa de cortar uma árvore:
+## vai até ela, corta até encher a mochila (ou a árvore acabar), leva a madeira até a porta da
+## casa, entrega (só aí o estoque sobe) e volta para a árvore enquanto ainda houver madeira.
 
-enum State { IDLE, WALK, TO_TREE, CHOP }
+enum State { IDLE, WALK, TO_TREE, CHOP, TO_HOME }
 
 const IDLE_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Idle.png")
 const RUN_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run.png")
 const RUN_AXE_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run Axe.png")
+const RUN_WOOD_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run Wood.png")
 const CHOP_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Interact Axe.png")
 const FRAME_SIZE := Vector2i(192, 192)
 ## Altura (em px, a partir do topo do frame) onde ficam os pés do personagem.
@@ -22,25 +24,29 @@ const PATH_CHECK_STEP := 16.0
 const TARGET_ATTEMPTS := 8
 ## Madeira ganha a cada machadada completa (um ciclo da animação de corte).
 const WOOD_PER_CHOP := 2
+## Quanta madeira cabe na mochila antes de ter que levar para casa.
+const BACKPACK_CAPACITY := 6
 
 var _state := State.IDLE
 var _timer := 0.0
 var _target := Vector2.ZERO
+## Porta da casa do aldeão: centro do passeio e ponto de entrega.
 var _home := Vector2.ZERO
-var _is_walkable := func(_point: Vector2) -> bool: return true
+var _world: World
 
 var _tree: WoodTree
 var _path := PackedVector2Array()
 var _path_index := 0
+var _carried_wood := 0
 
 @onready var _sprite: AnimatedSprite2D = $AnimatedSprite2D
 
 
-## Define o ponto ao redor do qual o aldeão passeia e a regra de onde ele pode pisar.
+## Define a porta da casa (onde passeia e entrega recursos) e o mapa onde anda.
 ## Chamar antes de entrar na árvore da cena.
-func setup(home: Vector2, is_walkable: Callable) -> void:
+func setup(home: Vector2, world: World) -> void:
 	_home = home
-	_is_walkable = is_walkable
+	_world = world
 
 
 func _ready() -> void:
@@ -65,13 +71,8 @@ func assign_gather(tree: WoodTree, path: PackedVector2Array) -> void:
 	if not is_available() or not GameState.reserve_villager():
 		return
 	_tree = tree
-	_tree.worker = self
-	_path = path
-	_path_index = 0
-	_state = State.TO_TREE
-	_sprite.play("run_axe")
-	if _path.is_empty():
-		_arrive_at_tree()
+	_tree.worker = self  # a árvore fica reservada durante todas as viagens
+	_begin_path(State.TO_TREE, path, "run_axe")
 
 
 func _physics_process(delta: float) -> void:
@@ -83,8 +84,17 @@ func _physics_process(delta: float) -> void:
 		State.WALK:
 			if _step_towards(_target, delta, WALK_SPEED):
 				_start_idle()
-		State.TO_TREE:
+		State.TO_TREE, State.TO_HOME:
 			_follow_path(delta)
+
+
+func _begin_path(state: State, path: PackedVector2Array, animation: String) -> void:
+	_state = state
+	_path = path
+	_path_index = 0
+	_sprite.play(animation)
+	if _path.is_empty():
+		_on_path_finished()
 
 
 func _follow_path(delta: float) -> void:
@@ -94,7 +104,14 @@ func _follow_path(delta: float) -> void:
 	if _step_towards(waypoint, delta, WORK_SPEED):
 		_path_index += 1
 		if _path_index >= _path.size():
-			_arrive_at_tree()
+			_on_path_finished()
+
+
+func _on_path_finished() -> void:
+	if _state == State.TO_TREE:
+		_arrive_at_tree()
+	else:
+		_deliver_wood()
 
 
 func _arrive_at_tree() -> void:
@@ -110,9 +127,32 @@ func _arrive_at_tree() -> void:
 func _on_animation_looped() -> void:
 	if _state != State.CHOP:
 		return
-	GameState.add_resource("wood", _tree.take_wood(WOOD_PER_CHOP))
-	if _tree.is_depleted():
-		_finish_task()
+	_carried_wood += _tree.take_wood(mini(WOOD_PER_CHOP, BACKPACK_CAPACITY - _carried_wood))
+	if _carried_wood >= BACKPACK_CAPACITY or _tree.is_depleted():
+		_go_home()
+
+
+func _go_home() -> void:
+	var path := _world.find_path(position, _home)
+	if path.is_empty():
+		# Sem caminho até a porta (ex.: cercada por construções): entrega aqui mesmo,
+		# para a madeira não se perder nem o aldeão ficar preso na tarefa.
+		_deliver_wood()
+		return
+	_begin_path(State.TO_HOME, path, "run_wood")
+
+
+func _deliver_wood() -> void:
+	if _carried_wood > 0:
+		GameState.add_resource("wood", _carried_wood)
+		_carried_wood = 0
+	# Volta para a árvore se ainda tem madeira e o caminho continua existindo.
+	if not _tree.is_depleted():
+		var path := _world.find_path_to_adjacent(position, _tree.cell)
+		if not path.is_empty():
+			_begin_path(State.TO_TREE, path, "run_axe")
+			return
+	_finish_task()
 
 
 func _finish_task() -> void:
@@ -155,14 +195,14 @@ func _try_start_walk() -> void:
 
 ## Confere o destino e pontos intermediários, para não atravessar casas nem sair da ilha.
 func _is_path_clear(from: Vector2, to: Vector2) -> bool:
-	if not _is_walkable.call(to):
+	if not _world.is_point_walkable(to):
 		return false
 	# Se o aldeão já está num lugar inválido (ex.: construíram em cima dele), só o destino importa.
-	if not _is_walkable.call(from):
+	if not _world.is_point_walkable(from):
 		return true
 	var steps := int(from.distance_to(to) / PATH_CHECK_STEP)
 	for i in range(1, steps):
-		if not _is_walkable.call(from.lerp(to, float(i) / steps)):
+		if not _world.is_point_walkable(from.lerp(to, float(i) / steps)):
 			return false
 	return true
 
@@ -173,5 +213,6 @@ func _build_frames() -> SpriteFrames:
 	SpriteSheets.add_animation(frames, "idle", IDLE_TEXTURE, FRAME_SIZE, 8.0)
 	SpriteSheets.add_animation(frames, "run", RUN_TEXTURE, FRAME_SIZE, 10.0)
 	SpriteSheets.add_animation(frames, "run_axe", RUN_AXE_TEXTURE, FRAME_SIZE, 10.0)
+	SpriteSheets.add_animation(frames, "run_wood", RUN_WOOD_TEXTURE, FRAME_SIZE, 10.0)
 	SpriteSheets.add_animation(frames, "chop", CHOP_TEXTURE, FRAME_SIZE, 10.0)
 	return frames

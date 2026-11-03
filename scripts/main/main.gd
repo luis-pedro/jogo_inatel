@@ -143,5 +143,5 @@ func _on_building_placed(building: Building) -> void:
 	for i in GameState.VILLAGERS_PER_HOUSE:
 		var pawn: Pawn = pawn_scene.instantiate()
 		pawn.position = door + along_wall * (i - 0.5) * 56
-		pawn.setup(door, _world.is_point_walkable)
+		pawn.setup(door, _world)
 		_entities.add_child(pawn)

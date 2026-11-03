@@ -67,26 +67,43 @@ func is_point_walkable(point: Vector2) -> bool:
 	return is_cell_free(world_to_cell(point))
 
 
-## Caminho (centros de células) de `from_point` até uma célula vizinha livre de `target_cell`.
+## Caminho (centros de células) de `from_point` até a célula de `to_point`.
+## Vazio se não houver caminho (ex.: destino bloqueado ou cercado).
+func find_path(from_point: Vector2, to_point: Vector2) -> PackedVector2Array:
+	var from_cell := world_to_cell(from_point)
+	var to_cell := world_to_cell(to_point)
+	if not _is_walkable_cell(from_cell) or not _is_walkable_cell(to_cell):
+		return PackedVector2Array()
+	return _ids_to_points(_astar.get_id_path(from_cell, to_cell))
+
+
+## Caminho de `from_point` até uma célula vizinha livre de `target_cell`.
 ## Serve para ir até algo que ocupa uma célula, como uma árvore. Vazio se não houver caminho.
 func find_path_to_adjacent(from_point: Vector2, target_cell: Vector2i) -> PackedVector2Array:
 	var from_cell := world_to_cell(from_point)
-	if not _astar.is_in_boundsv(from_cell) or _astar.is_point_solid(from_cell):
+	if not _is_walkable_cell(from_cell):
 		return PackedVector2Array()
 
 	var best: Array[Vector2i] = []
 	for direction in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
 		var neighbor: Vector2i = target_cell + direction
-		if not _astar.is_in_boundsv(neighbor) or _astar.is_point_solid(neighbor):
+		if not _is_walkable_cell(neighbor):
 			continue
 		var ids := _astar.get_id_path(from_cell, neighbor)
 		if not ids.is_empty() and (best.is_empty() or ids.size() < best.size()):
 			best = ids
+	return _ids_to_points(best)
 
+
+func _is_walkable_cell(cell: Vector2i) -> bool:
+	return _astar.is_in_boundsv(cell) and not _astar.is_point_solid(cell)
+
+
+func _ids_to_points(ids: Array[Vector2i]) -> PackedVector2Array:
 	var points := PackedVector2Array()
 	# O primeiro ponto é a célula onde o aldeão já está; pula para ele não "voltar" ao centro dela.
-	for i in range(1 if best.size() > 1 else 0, best.size()):
-		points.append(cell_to_center(best[i]))
+	for i in range(1 if ids.size() > 1 else 0, ids.size()):
+		points.append(cell_to_center(ids[i]))
 	return points
 
 
