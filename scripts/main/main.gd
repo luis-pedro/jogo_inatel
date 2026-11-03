@@ -7,7 +7,7 @@ const CLICK_DRAG_THRESHOLD := 8.0
 
 ## Cursor de machado mostrado sobre árvores que podem ser cortadas.
 const AXE_CURSOR_TEXTURE := preload("res://assets/Terrain/Resources/Tools/Tool_02.png")
-const AXE_CURSOR_SIZE := 48
+const AXE_CURSOR_SIZE := 80
 
 ## Árvores do cenário de teste (células do mapa).
 const TEST_TREE_CELLS: Array[Vector2i] = [
