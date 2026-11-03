@@ -12,6 +12,8 @@ const INVALID_COLOR := Color(1.0, 0.4, 0.4, 0.7)
 @export var world: World
 ## Nó (com y_sort) onde os prédios são criados, compartilhado com as unidades.
 @export var buildings_root: Node2D
+## Nó acima de tudo (sem y-sort) onde fica o fantasma de construção.
+@export var overlay: Node2D
 
 var _occupied: Dictionary = {}  # Vector2i -> true
 var _current: BuildingData
@@ -49,7 +51,7 @@ func start_placing(data: BuildingData) -> void:
 	_current = data
 	_ghost = BUILDING_SCENE.instantiate()
 	_ghost.setup(data, _cell_under_mouse(data), World.TILE_SIZE, _variant)
-	add_child(_ghost)
+	overlay.add_child(_ghost)
 	placing_changed.emit(true)
 
 
@@ -75,6 +77,8 @@ func try_place(data: BuildingData, cell: Vector2i) -> bool:
 func place(data: BuildingData, cell: Vector2i, variant := 0) -> Building:
 	var building: Building = BUILDING_SCENE.instantiate()
 	building.setup(data, cell, World.TILE_SIZE, variant)
+	# Só entra no grupo quando construída (o fantasma também é um Building).
+	building.add_to_group(PhysicsLayers.GROUP_BUILDINGS)
 	buildings_root.add_child(building)
 	for covered in _footprint_cells(data, cell):
 		_occupied[covered] = true

@@ -28,7 +28,9 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("build_house"):
+	if event.is_action_pressed("toggle_fullscreen"):
+		_toggle_fullscreen()
+	elif event.is_action_pressed("build_house"):
 		_build_manager.start_placing(house_data)
 	elif OS.is_debug_build() and event is InputEventKey and event.pressed and event.keycode == KEY_F1:
 		# Atalho de teste enquanto não existe coleta de recursos.
@@ -49,3 +51,10 @@ func _on_building_placed(building: Building) -> void:
 		pawn.position = door + along_wall * (i - 0.5) * 56
 		pawn.setup(door, _build_manager.is_point_walkable)
 		_entities.add_child(pawn)
+
+
+func _toggle_fullscreen() -> void:
+	var is_fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+	DisplayServer.window_set_mode(
+		DisplayServer.WINDOW_MODE_WINDOWED if is_fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN
+	)

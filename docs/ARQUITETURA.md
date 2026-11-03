@@ -30,6 +30,37 @@ Scripts ligados a uma única cena podem ficar na mesma pasta da cena (`house.tsc
 
 Para adicionar um prédio novo: duplique `data/buildings/house.tres`, troque `textures` (uma por orientação), `door_directions`, `footprint` e `cost`.
 
+## Camadas
+
+**Ordem de desenho** (em `main.tscn`, de baixo para cima):
+
+| Nó | Conteúdo |
+|---|---|
+| `Water` | Fundo de água (`z_index = -10`). |
+| `World/Ground` | Chão (TileMapLayer). Nunca se sobrepõe. |
+| `Entities` (y-sort) | Tudo que fica em pé no chão e pode se sobrepor: prédios, aldeões, inimigos, árvores, minas. **Precisam estar no mesmo nó** para o y-sort funcionar. |
+| `Overlay` | Fantasma de construção, seleção, efeitos. Desenhado acima de tudo no mundo. |
+| `Hud` (CanvasLayer) | Interface, sempre por cima. |
+
+Para achar um tipo de objeto sem depender da hierarquia, use **grupos** (`PhysicsLayers.GROUP_UNITS`, `GROUP_BUILDINGS`...): `get_tree().get_nodes_in_group(PhysicsLayers.GROUP_UNITS)`.
+
+**Camadas de física 2D** (nomeadas em Project Settings > Layer Names; constantes em `scripts/core/physics_layers.gd`):
+
+| # | Nome | Para quê |
+|---|---|---|
+| 1 | `units` | Pawn, guerreiro, arqueiro... |
+| 2 | `enemies` | Inimigos |
+| 3 | `buildings` | Construções |
+| 4 | `collectibles` | Árvores, ouro, carne |
+| 5 | `terrain` | Água, penhascos |
+| 6 | `projectiles` | Flechas |
+
+*Layer* = o que o objeto **é**; *mask* = o que ele **enxerga**. Ex.: uma flecha inimiga tem `collision_layer = PROJECTILES` e `collision_mask = UNITS | BUILDINGS`.
+
+## Tela
+
+Tela cheia por padrão (`window/size/mode = Fullscreen`), **F11** alterna para janela. Resolução base 1920×1080 com stretch `canvas_items`/`expand`: em telas Full HD o pixel art fica 1:1, e em outras resoluções a imagem escala mantendo a proporção.
+
 ## Autoloads
 
 | Nome | Arquivo | Responsabilidade |
