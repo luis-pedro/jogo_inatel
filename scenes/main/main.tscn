@@ -28,13 +28,16 @@ script = ExtResource("2")
 
 [node name="Ground" type="TileMapLayer" parent="World"]
 
-[node name="BuildManager" type="Node2D" parent="." node_paths=PackedStringArray("world", "buildings_root")]
+[node name="BuildManager" type="Node2D" parent="." node_paths=PackedStringArray("world", "buildings_root", "overlay")]
 script = ExtResource("4")
 world = NodePath("../World")
 buildings_root = NodePath("../Entities")
+overlay = NodePath("../Overlay")
 
 [node name="Entities" type="Node2D" parent="."]
 y_sort_enabled = true
+
+[node name="Overlay" type="Node2D" parent="."]
 
 [node name="Camera" type="Camera2D" parent="."]
 script = ExtResource("3")

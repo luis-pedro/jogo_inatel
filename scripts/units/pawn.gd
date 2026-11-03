@@ -35,6 +35,7 @@ func setup(home: Vector2, is_walkable: Callable) -> void:
 
 
 func _ready() -> void:
+	add_to_group(PhysicsLayers.GROUP_UNITS)
 	_sprite.sprite_frames = _build_frames()
 	# Origem do nó nos pés, para o y_sort ordenar corretamente.
 	_sprite.offset = Vector2(0, FRAME_SIZE.y / 2.0 - FEET_Y)
