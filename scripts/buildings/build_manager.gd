@@ -15,7 +15,6 @@ const INVALID_COLOR := Color(1.0, 0.4, 0.4, 0.7)
 ## Nó acima de tudo (sem y-sort) onde fica o fantasma de construção.
 @export var overlay: Node2D
 
-var _occupied: Dictionary = {}  # Vector2i -> true
 var _current: BuildingData
 var _ghost: Building
 var _variant := 0  # orientação escolhida com R
@@ -42,8 +41,11 @@ func _unhandled_input(event: InputEvent) -> void:
 					and not GameState.can_afford(_current.cost):
 				# Sem recursos para outra, sai do modo de construção.
 				stop_placing()
+			# Marca como tratado para o clique não virar outra ação (ex.: selecionar uma árvore).
+			get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			stop_placing()
+			get_viewport().set_input_as_handled()
 
 
 func start_placing(data: BuildingData) -> void:
@@ -81,22 +83,16 @@ func place(data: BuildingData, cell: Vector2i, variant := 0) -> Building:
 	building.add_to_group(PhysicsLayers.GROUP_BUILDINGS)
 	buildings_root.add_child(building)
 	for covered in _footprint_cells(data, cell):
-		_occupied[covered] = true
+		world.block_cell(covered)
 	building_placed.emit(building)
 	return building
-
-
-## Se um aldeão pode pisar neste ponto do mundo: dentro da ilha e fora de prédios.
-func is_point_walkable(point: Vector2) -> bool:
-	var cell := world.world_to_cell(point)
-	return world.is_buildable(cell) and not _occupied.has(cell)
 
 
 func _can_place(data: BuildingData, cell: Vector2i) -> bool:
 	if not GameState.can_afford(data.cost):
 		return false
 	for covered in _footprint_cells(data, cell):
-		if not world.is_buildable(covered) or _occupied.has(covered):
+		if not world.is_cell_free(covered):
 			return false
 	return true
 

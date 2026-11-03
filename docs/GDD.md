@@ -32,7 +32,7 @@ Coletar recursos ──► Construir / Recrutar ──► Expandir território
 |---|---|---|---|
 | Comida | Manter a população **[A definir]** | **[A definir]** | `Terrain/Resources/Meat` |
 | Ouro | Recrutar unidades **[A definir]** | Minas de ouro | `Terrain/Resources/Gold` |
-| Madeira | Construções | Árvores | `Terrain/Resources/Wood` |
+| Madeira | Construções | Árvores (cortadas por aldeões) | `Terrain/Resources/Wood` |
 
 Valores iniciais provisórios (em `scripts/autoload/game_state.gd`): **50 comida, 20 ouro, 100 madeira**.
 
@@ -41,7 +41,10 @@ Valores iniciais provisórios (em `scripts/autoload/game_state.gd`): **50 comida
 - Cada **casa** construída gera **2 aldeões** (Pawns).
 - O jogo começa com 1 casa → 2 aldeões.
 - Sem tarefa, o aldeão passeia: anda até um ponto perto de casa, para (idle) e repete.
-- Aldeões coletam recursos e constroem estruturas **[A definir]**.
+- O HUD mostra os aldeões **disponíveis / no total**. Aldeão ocupado com uma tarefa não está disponível.
+- **Coleta de madeira:** clicar numa árvore manda o aldeão disponível com o caminho mais curto até ela. Ele corta (2 de madeira por machadada) até encher a **mochila (6)** ou a árvore acabar, leva a madeira até a **porta da casa** com a animação de carregar, entrega (só então o estoque sobe) e volta à árvore enquanto houver madeira (12 por árvore). Ao acabar vira toco e ele volta a ficar disponível. Só um aldeão por árvore (reservada durante todas as viagens).
+- Coleta de comida/ouro e construção por aldeões **[A definir]**.
+- **Planejado:** a mochila já existe (capacidade fixa em `pawn.gd`); falta a madeira que não couber cair no mapa como item (`Terrain/Resources/Wood/Wood Resource`) e fica esperando até um aldeão buscá-la. Hoje a madeira vai direto para o estoque.
 
 ## 5. Construções
 
@@ -82,7 +85,7 @@ Assets disponíveis em `assets/Units/<Cor> Units/`:
 
 ## 10. Interface (HUD)
 
-**Controles (v1):** WASD/setas movem a câmera · arrastar com o botão esquerdo ou do meio move a câmera (o esquerdo só fora do modo de construção) · roda do mouse dá zoom · **B** (ou botão) constrói casa · **R** gira a casa (3 orientações) · clique esquerdo confirma · clique direito/Esc cancela · **F11** alterna tela cheia/janela · **F1** (build de debug) dá +50 de cada recurso.
+**Controles (v1):** WASD/setas movem a câmera · arrastar com o botão esquerdo ou do meio move a câmera (o esquerdo só fora do modo de construção) · roda do mouse dá zoom · **B** (ou botão) constrói casa · **R** gira a casa (3 orientações) · clique esquerdo confirma / **clique numa árvore manda cortar** · clique direito/Esc cancela · **F11** alterna tela cheia/janela · **F1** (build de debug) dá +50 de cada recurso.
 
 - Contadores de recursos (comida, ouro, madeira) e população.
 - Menu de construção.
@@ -93,4 +96,5 @@ Assets disponíveis em `assets/Units/<Cor> Units/`:
 | Data | Decisão |
 |---|---|
 | 2026-10-27 | Início do projeto. Godot 4.7, assets Tiny Swords, renderer Compatibility. |
+| 2026-11-03 | Coleta de madeira: árvores no cenário de teste, tarefa de cortar e contador de aldeões disponíveis. |
 | 2026-10-28 | v1: câmera 2D (a visão diagonal vem da arte 3/4 do Tiny Swords) e construção de casas em grade de 64 px. |
