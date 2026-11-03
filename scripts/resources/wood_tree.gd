@@ -16,8 +16,9 @@ const SWAY_FPS := 6.0
 
 ## Célula do mapa que a árvore ocupa.
 var cell: Vector2i
-## Aldeão que está cortando agora (só um por árvore).
-var worker: Pawn
+## Aldeão que está cortando agora (só um por árvore). Tipado como Node2D de propósito:
+## usar `Pawn` aqui criaria uma dependência circular com pawn.gd, que usa `WoodTree`.
+var worker: Node2D
 
 @onready var _sprite: AnimatedSprite2D = $AnimatedSprite2D
 

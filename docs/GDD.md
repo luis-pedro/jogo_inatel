@@ -44,6 +44,7 @@ Valores iniciais provisórios (em `scripts/autoload/game_state.gd`): **50 comida
 - O HUD mostra os aldeões **disponíveis / no total**. Aldeão ocupado com uma tarefa não está disponível.
 - **Coleta de madeira (v1):** clicar numa árvore manda o aldeão disponível com o caminho mais curto até ela. Ele corta (2 de madeira por machadada, 12 por árvore), a árvore vira toco e ele volta a ficar disponível. Só um aldeão por árvore.
 - Coleta de comida/ouro e construção por aldeões **[A definir]**.
+- **Planejado:** aldeões terão uma mochila com capacidade. A madeira que não couber cai no mapa como item (`Terrain/Resources/Wood/Wood Resource`) e fica esperando até um aldeão buscá-la. Hoje a madeira vai direto para o estoque.
 
 ## 5. Construções
 
