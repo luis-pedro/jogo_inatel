@@ -48,6 +48,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
+func is_placing() -> bool:
+	return _ghost != null
+
+
 func start_placing(data: BuildingData) -> void:
 	stop_placing()
 	_current = data

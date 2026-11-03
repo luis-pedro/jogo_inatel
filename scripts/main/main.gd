@@ -5,6 +5,10 @@ extends Node2D
 ## Acima disso é um arrasto (da câmera).
 const CLICK_DRAG_THRESHOLD := 8.0
 
+## Cursor de machado mostrado sobre árvores que podem ser cortadas.
+const AXE_CURSOR_TEXTURE := preload("res://assets/Terrain/Resources/Tools/Tool_02.png")
+const AXE_CURSOR_SIZE := 48
+
 ## Árvores do cenário de teste (células do mapa).
 const TEST_TREE_CELLS: Array[Vector2i] = [
 	Vector2i(24, 4), Vector2i(26, 6), Vector2i(28, 5), Vector2i(27, 8), Vector2i(30, 7),
@@ -19,6 +23,8 @@ const TEST_TREE_CELLS: Array[Vector2i] = [
 
 var _press_pending := false
 var _press_position := Vector2.ZERO
+var _axe_cursor: Image
+var _axe_cursor_active := false
 
 @onready var _world: World = $World
 @onready var _camera: GameCamera = $Camera
@@ -29,6 +35,8 @@ var _press_position := Vector2.ZERO
 
 func _ready() -> void:
 	GameState.reset()
+	_axe_cursor = AXE_CURSOR_TEXTURE.get_image()
+	_axe_cursor.resize(AXE_CURSOR_SIZE, AXE_CURSOR_SIZE, Image.INTERPOLATE_NEAREST)
 	_build_manager.building_placed.connect(_on_building_placed)
 	_camera.set_world_limits(_world.get_world_rect())
 
@@ -44,6 +52,10 @@ func _ready() -> void:
 	_build_manager.placing_changed.connect(func(is_placing: bool): _camera.left_drag_enabled = not is_placing)
 
 
+func _process(_delta: float) -> void:
+	_update_cursor()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_fullscreen"):
 		_toggle_fullscreen()
@@ -55,6 +67,25 @@ func _unhandled_input(event: InputEvent) -> void:
 		# Atalho de teste para ganhar recursos sem coletar.
 		for type in GameState.resources:
 			GameState.add_resource(type, 50)
+
+
+## Troca o cursor por um machado quando o mouse está sobre uma árvore que dá para cortar.
+## Roda todo frame (e não só ao mover o mouse) porque a câmera pode se mover sob um mouse parado.
+func _update_cursor() -> void:
+	var over_choppable := false
+	# Não mostra o machado durante a construção nem quando o mouse está sobre a interface.
+	if not _build_manager.is_placing() and get_viewport().gui_get_hovered_control() == null:
+		var tree := _find_tree_at(get_global_mouse_position())
+		over_choppable = tree != null and tree.worker == null
+	if over_choppable == _axe_cursor_active:
+		return
+	_axe_cursor_active = over_choppable
+	# Imagem nula volta ao cursor padrão do sistema. O ponto ativo fica no centro do machado.
+	Input.set_custom_mouse_cursor(
+		_axe_cursor if over_choppable else null,
+		Input.CURSOR_ARROW,
+		Vector2(AXE_CURSOR_SIZE, AXE_CURSOR_SIZE) / 2.0
+	)
 
 
 func _toggle_fullscreen() -> void:
