@@ -1,45 +1,47 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://y5vn1wy8id5p"]
 
-[ext_resource type="Script" path="res://scripts/main/main.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/world/world.gd" id="2"]
-[ext_resource type="Script" path="res://scripts/camera/game_camera.gd" id="3"]
-[ext_resource type="Script" path="res://scripts/buildings/build_manager.gd" id="4"]
+[ext_resource type="Script" uid="uid://cwo3mv0yt7fqc" path="res://scripts/main/main.gd" id="1"]
+[ext_resource type="Script" uid="uid://bi8nognntgqle" path="res://scripts/world/world.gd" id="2"]
+[ext_resource type="Script" uid="uid://c5nse6ejnx1w7" path="res://scripts/camera/game_camera.gd" id="3"]
+[ext_resource type="Script" uid="uid://cjhvt6qawcc82" path="res://scripts/buildings/build_manager.gd" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="5"]
 [ext_resource type="Resource" path="res://data/buildings/house.tres" id="6"]
+[ext_resource type="Texture2D" uid="uid://bx44e53py7lj0" path="res://assets/Terrain/Tileset/Water Background color.png" id="7"]
 [ext_resource type="PackedScene" path="res://scenes/units/pawn.tscn" id="8"]
-[ext_resource type="Texture2D" path="res://assets/Terrain/Tileset/Water Background color.png" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/resources/wood_tree.tscn" id="9"]
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" unique_id=1638811561]
 script = ExtResource("1")
 house_data = ExtResource("6")
 pawn_scene = ExtResource("8")
+tree_scene = ExtResource("9")
 
-[node name="Water" type="Sprite2D" parent="."]
+[node name="Water" type="Sprite2D" parent="." unique_id=1799899241]
 z_index = -10
 texture_repeat = 2
+position = Vector2(-1066, -944)
 texture = ExtResource("7")
 centered = false
 region_enabled = true
 region_rect = Rect2(-1024, -1024, 4608, 3584)
-position = Vector2(-1024, -1024)
 
-[node name="World" type="Node2D" parent="."]
+[node name="World" type="Node2D" parent="." unique_id=1333100805]
 script = ExtResource("2")
 
-[node name="Ground" type="TileMapLayer" parent="World"]
+[node name="Ground" type="TileMapLayer" parent="World" unique_id=486697090]
 
-[node name="BuildManager" type="Node2D" parent="." node_paths=PackedStringArray("world", "buildings_root", "overlay")]
+[node name="BuildManager" type="Node2D" parent="." unique_id=1446468437 node_paths=PackedStringArray("world", "buildings_root", "overlay")]
 script = ExtResource("4")
 world = NodePath("../World")
 buildings_root = NodePath("../Entities")
 overlay = NodePath("../Overlay")
 
-[node name="Entities" type="Node2D" parent="."]
+[node name="Entities" type="Node2D" parent="." unique_id=1804622513]
 y_sort_enabled = true
 
-[node name="Overlay" type="Node2D" parent="."]
+[node name="Overlay" type="Node2D" parent="." unique_id=362272792]
 
-[node name="Camera" type="Camera2D" parent="."]
+[node name="Camera" type="Camera2D" parent="." unique_id=1585097987]
 script = ExtResource("3")
 
-[node name="Hud" parent="." instance=ExtResource("5")]
+[node name="Hud" parent="." unique_id=1541800288 instance=ExtResource("5")]

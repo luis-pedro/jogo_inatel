@@ -23,9 +23,11 @@ Scripts ligados a uma única cena podem ficar na mesma pasta da cena (`house.tsc
 | Sistema | Arquivos | Descrição |
 |---|---|---|
 | Câmera | `scripts/camera/game_camera.gd` | Pan, zoom e limites do mapa. |
-| Mapa | `scripts/world/world.gd` | Ilha de grama (TileMapLayer montado por código), conversão célula↔mundo (grade de 64 px) e área construível. |
+| Mapa | `scripts/world/world.gd` | Ilha de grama (TileMapLayer montado por código), conversão célula↔mundo (grade de 64 px), células bloqueadas (prédios, árvores) e **pathfinding** com `AStarGrid2D`. |
 | Construção | `scripts/buildings/build_manager.gd`, `building.gd`, `building_data.gd` | Fantasma na grade, validação, custo e criação. Cada tipo de prédio é um `BuildingData` em `data/buildings/*.tres`. |
-| Aldeões | `scripts/units/pawn.gd` | Máquina de estados IDLE ⇄ WALK com animações idle/run; sorteia destinos perto de casa e valida o caminho. |
+| Aldeões | `scripts/units/pawn.gd` | Máquina de estados IDLE ⇄ WALK (passeio) e TO_TREE → CHOP (tarefa de cortar). Anima por código a partir das faixas de frames. |
+| Recursos coletáveis | `scripts/resources/wood_tree.gd` | Árvore (`Area2D` na camada `collectibles`): madeira restante, `worker` (quem corta) e toco ao acabar. |
+| Sprites | `scripts/core/sprite_sheets.gd` | `SpriteSheets.add_animation()` fatia faixas horizontais de frames em `SpriteFrames`. |
 | Interface | `scripts/ui/hud.gd` | Recursos, população e botão de construir. |
 
 Para adicionar um prédio novo: duplique `data/buildings/house.tres`, troque `textures` (uma por orientação), `door_directions`, `footprint` e `cost`.
@@ -66,6 +68,10 @@ Tela cheia por padrão (`window/size/mode = Fullscreen`), **F11** alterna para j
 | Nome | Arquivo | Responsabilidade |
 |---|---|---|
 | `GameState` | `scripts/autoload/game_state.gd` | Recursos (comida, ouro, madeira), casas e população. Emite `resources_changed` e `population_changed`. |
+
+**Aldeões disponíveis:** `GameState.population` é o total e `busy_villagers` os ocupados; `available_villagers()` é a diferença. Quem começa uma tarefa chama `reserve_villager()` e quem termina chama `release_villager()`. O sinal `villagers_changed` atualiza o HUD.
+
+**Clique vs. arrasto:** o botão esquerdo também move a câmera, então `main.gd` só trata como clique se o mouse soltar a até 8 px de onde apertou. O `BuildManager` marca seus cliques como tratados (`set_input_as_handled`) para não virarem seleção.
 
 Exemplo de uso:
 
