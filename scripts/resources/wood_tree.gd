@@ -19,11 +19,6 @@ const REGROW_RETRY_SECONDS := 5.0
 
 ## Tipo da árvore (sprites do pé de árvore e do toco). Definir antes de entrar na cena.
 @export var data: TreeData
-## O toco leva um tempo sorteado entre estes dois valores (em segundos) para virar árvore de novo.
-## Ajustável por árvore no Inspetor.
-@export var regrow_time_min := 45.0
-@export var regrow_time_max := 90.0
-
 ## Madeira que ainda resta na árvore (sorteada em `roll_wood_amount()`).
 var wood := 0
 ## Célula do mapa que a árvore ocupa.
@@ -95,11 +90,11 @@ func roll_wood_amount() -> int:
 	return randi_range(data.wood_min, data.wood_max)
 
 
-## Sorteia quanto tempo (em segundos) este toco leva para virar árvore de novo.
-## É chamada a cada vez que a árvore é cortada, então varia entre árvores e entre ciclos.
+## Sorteia quanto tempo (em segundos) este toco leva para virar árvore de novo, dentro da faixa
+## do seu tipo (grandes demoram mais). É chamada a cada vez que a árvore é cortada, então varia entre árvores e entre ciclos.
 ## Para outra regra (ex.: depender do terreno ou da estação), mude só esta função.
 func roll_regrow_time() -> float:
-	return randf_range(regrow_time_min, regrow_time_max)
+	return randf_range(data.regrow_time_min, data.regrow_time_max)
 
 
 func _become_stump() -> void:

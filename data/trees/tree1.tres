@@ -15,4 +15,6 @@ stump_frame_size = Vector2i(192, 256)
 stump_feet_y = 228
 wood_min = 14
 wood_max = 25
+regrow_time_min = 90.0
+regrow_time_max = 150.0
 click_size = Vector2(100, 170)
