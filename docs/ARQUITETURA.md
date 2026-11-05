@@ -26,7 +26,7 @@ Scripts ligados a uma única cena podem ficar na mesma pasta da cena (`house.tsc
 | Mapa | `scripts/world/world.gd` | Ilha de grama (TileMapLayer montado por código), conversão célula↔mundo (grade de 64 px), células bloqueadas (prédios, árvores) e **pathfinding** com `AStarGrid2D`. |
 | Construção | `scripts/buildings/build_manager.gd`, `building.gd`, `building_data.gd` | Fantasma na grade, validação, custo e criação. Cada tipo de prédio é um `BuildingData` em `data/buildings/*.tres`. |
 | Aldeões | `scripts/units/pawn.gd` | Máquina de estados IDLE ⇄ WALK (passeio) e TO_TREE → CHOP → TO_HOME (tarefa de cortar, com mochila e entrega na porta da casa). Anima por código a partir das faixas de frames. |
-| Recursos coletáveis | `scripts/resources/wood_tree.gd` | Árvore (`Area2D` na camada `collectibles`): madeira restante, `worker` (quem corta) e toco ao acabar. |
+| Recursos coletáveis | `scripts/resources/wood_tree.gd` | Árvore (`Area2D` na camada `collectibles`): madeira restante, `worker` (quem corta), toco ao acabar e **rebrota** após `roll_regrow_time()` (sorteio entre `regrow_time_min` e `regrow_time_max`, ajustáveis no Inspetor). |
 | Sprites | `scripts/core/sprite_sheets.gd` | `SpriteSheets.add_animation()` fatia faixas horizontais de frames em `SpriteFrames`. |
 | Interface | `scripts/ui/hud.gd` | Recursos, população e botão de construir. |
 
