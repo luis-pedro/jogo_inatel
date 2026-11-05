@@ -7,11 +7,8 @@ extends Area2D
 signal depleted
 signal regrown
 
-const TREE_TEXTURE := preload("res://assets/Terrain/Resources/Wood/Trees/Tree1.png")
-const STUMP_TEXTURE := preload("res://assets/Terrain/Resources/Wood/Trees/Stump 1.png")
-const FRAME_SIZE := Vector2i(192, 256)
-## Altura (em px, a partir do topo do frame) onde fica a base do tronco.
-const FEET_Y := 228
+## Tipo usado quando nenhum é definido antes de a árvore entrar na cena.
+const DEFAULT_DATA := preload("res://data/trees/tree1.tres")
 const SWAY_FPS := 6.0
 
 ## Duração da animação em que a muda cresce até o tamanho final.
@@ -20,6 +17,8 @@ const SAPLING_SCALE := 0.3
 ## Se um aldeão ainda está usando a árvore quando ela deveria crescer, tenta de novo depois.
 const REGROW_RETRY_SECONDS := 5.0
 
+## Tipo da árvore (sprites do pé de árvore e do toco). Definir antes de entrar na cena.
+@export var data: TreeData
 @export var wood := 12
 ## O toco leva um tempo sorteado entre estes dois valores (em segundos) para virar árvore de novo.
 ## Ajustável por árvore no Inspetor.
@@ -38,19 +37,43 @@ var _max_wood := 0
 
 
 func _ready() -> void:
+	if data == null:
+		data = DEFAULT_DATA
 	_max_wood = wood
 	collision_mask = 0
 	_set_choppable(true)
 
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
-	SpriteSheets.add_animation(frames, "sway", TREE_TEXTURE, FRAME_SIZE, SWAY_FPS)
-	SpriteSheets.add_animation(frames, "stump", STUMP_TEXTURE, FRAME_SIZE, 1.0)
+	SpriteSheets.add_animation(frames, "sway", data.tree_texture, data.tree_frame_size, SWAY_FPS)
+	SpriteSheets.add_animation(frames, "stump", data.stump_texture, data.stump_frame_size, 1.0)
 	_sprite.sprite_frames = frames
+	_setup_click_area()
+	_show_tree()
+
+
+## Cada instância precisa do seu próprio shape: o da cena é compartilhado entre todas as árvores.
+func _setup_click_area() -> void:
+	var shape := RectangleShape2D.new()
+	shape.size = data.click_size
+	var collision: CollisionShape2D = $CollisionShape2D
+	collision.shape = shape
+	# Base da área clicável nos pés da árvore.
+	collision.position = Vector2(0, -data.click_size.y / 2.0)
+
+
+## Mostra a árvore ou o toco. Os sprites têm tamanhos de frame e bases diferentes,
+## então o deslocamento é refeito a cada troca.
+func _show_tree() -> void:
 	# Origem do nó na base do tronco, para o y_sort ordenar corretamente.
-	_sprite.offset = Vector2(0, FRAME_SIZE.y / 2.0 - FEET_Y)
+	_sprite.offset = Vector2(0, data.tree_frame_size.y / 2.0 - data.tree_feet_y)
 	_sprite.play("sway")
-	_sprite.frame = randi() % frames.get_frame_count("sway")
+	_sprite.frame = randi() % _sprite.sprite_frames.get_frame_count("sway")
+
+
+func _show_stump() -> void:
+	_sprite.offset = Vector2(0, data.stump_frame_size.y / 2.0 - data.stump_feet_y)
+	_sprite.play("stump")
 
 
 func is_depleted() -> bool:
@@ -75,7 +98,7 @@ func roll_regrow_time() -> float:
 
 func _become_stump() -> void:
 	_set_choppable(false)
-	_sprite.play("stump")
+	_show_stump()
 	depleted.emit()
 	_schedule_regrow(roll_regrow_time())
 
@@ -89,8 +112,7 @@ func _try_regrow() -> void:
 		_schedule_regrow(REGROW_RETRY_SECONDS)
 		return
 	wood = _max_wood
-	_sprite.play("sway")
-	_sprite.frame = randi() % _sprite.sprite_frames.get_frame_count("sway")
+	_show_tree()
 	# A muda nasce pequena e cresce até o tamanho normal; só pode ser cortada depois disso.
 	_sprite.scale = Vector2.ONE * SAPLING_SCALE
 	var tween := create_tween()
