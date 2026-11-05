@@ -13,4 +13,6 @@ tree_feet_y = 234
 stump_texture = ExtResource("3")
 stump_frame_size = Vector2i(192, 256)
 stump_feet_y = 234
+wood_min = 14
+wood_max = 25
 click_size = Vector2(90, 200)

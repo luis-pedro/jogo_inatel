@@ -24,8 +24,9 @@ const PATH_CHECK_STEP := 16.0
 const TARGET_ATTEMPTS := 8
 ## Madeira ganha a cada machadada completa (um ciclo da animação de corte).
 const WOOD_PER_CHOP := 2
-## Quanta madeira cabe na mochila antes de ter que levar para casa.
-const BACKPACK_CAPACITY := 6
+## Quanta madeira cabe na mochila antes de ter que levar para casa. Com 13, uma árvore grande
+## (14 a 25 de madeira) dá 2 viagens e uma pequena (5 a 12) dá 1.
+const BACKPACK_CAPACITY := 13
 
 var _state := State.IDLE
 var _timer := 0.0

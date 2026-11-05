@@ -13,5 +13,8 @@ extends Resource
 @export var stump_frame_size := Vector2i(192, 256)
 ## Altura (px, a partir do topo do frame) da base do toco. Difere da árvore em alguns tipos.
 @export var stump_feet_y := 228
+## Quanta madeira a árvore dá: sorteio entre estes valores (de novo a cada rebrota).
+@export var wood_min := 12
+@export var wood_max := 12
 ## Área clicável (px), com a base alinhada aos pés da árvore.
 @export var click_size := Vector2(100, 170)
