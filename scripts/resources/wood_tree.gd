@@ -19,19 +19,14 @@ const REGROW_RETRY_SECONDS := 5.0
 
 ## Tipo da árvore (sprites do pé de árvore e do toco). Definir antes de entrar na cena.
 @export var data: TreeData
-@export var wood := 12
-## O toco leva um tempo sorteado entre estes dois valores (em segundos) para virar árvore de novo.
-## Ajustável por árvore no Inspetor.
-@export var regrow_time_min := 45.0
-@export var regrow_time_max := 90.0
-
+## Madeira que ainda resta na árvore (sorteada em `roll_wood_amount()`).
+var wood := 0
 ## Célula do mapa que a árvore ocupa.
 var cell: Vector2i
 ## Aldeão que está cortando agora (só um por árvore). Tipado como Node2D de propósito:
 ## usar `Pawn` aqui criaria uma dependência circular com pawn.gd, que usa `WoodTree`.
 var worker: Node2D
 
-var _max_wood := 0
 
 @onready var _sprite: AnimatedSprite2D = $AnimatedSprite2D
 
@@ -39,7 +34,7 @@ var _max_wood := 0
 func _ready() -> void:
 	if data == null:
 		data = DEFAULT_DATA
-	_max_wood = wood
+	wood = roll_wood_amount()
 	collision_mask = 0
 	_set_choppable(true)
 
@@ -89,11 +84,17 @@ func take_wood(amount: int) -> int:
 	return taken
 
 
-## Sorteia quanto tempo (em segundos) este toco leva para virar árvore de novo.
-## É chamada a cada vez que a árvore é cortada, então varia entre árvores e entre ciclos.
+## Sorteia quanta madeira a árvore dá, dentro da faixa do seu tipo. Árvores grandes dão mais
+## que as pequenas, e a cada rebrota o valor muda.
+func roll_wood_amount() -> int:
+	return randi_range(data.wood_min, data.wood_max)
+
+
+## Sorteia quanto tempo (em segundos) este toco leva para virar árvore de novo, dentro da faixa
+## do seu tipo (grandes demoram mais). É chamada a cada vez que a árvore é cortada, então varia entre árvores e entre ciclos.
 ## Para outra regra (ex.: depender do terreno ou da estação), mude só esta função.
 func roll_regrow_time() -> float:
-	return randf_range(regrow_time_min, regrow_time_max)
+	return randf_range(data.regrow_time_min, data.regrow_time_max)
 
 
 func _become_stump() -> void:
@@ -111,7 +112,7 @@ func _try_regrow() -> void:
 	if worker != null:
 		_schedule_regrow(REGROW_RETRY_SECONDS)
 		return
-	wood = _max_wood
+	wood = roll_wood_amount()
 	_show_tree()
 	# A muda nasce pequena e cresce até o tamanho normal; só pode ser cortada depois disso.
 	_sprite.scale = Vector2.ONE * SAPLING_SCALE
