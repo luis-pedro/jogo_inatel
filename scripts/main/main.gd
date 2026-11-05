@@ -9,6 +9,14 @@ const CLICK_DRAG_THRESHOLD := 8.0
 const AXE_CURSOR_TEXTURE := preload("res://assets/Terrain/Resources/Tools/Tool_02.png")
 const AXE_CURSOR_SIZE := 80
 
+## Tipos de árvore sorteados ao criar o cenário (cada um com seu toco).
+const TREE_TYPES := [
+	preload("res://data/trees/tree1.tres"),
+	preload("res://data/trees/tree2.tres"),
+	preload("res://data/trees/tree3.tres"),
+	preload("res://data/trees/tree4.tres"),
+]
+
 ## Árvores do cenário de teste (células do mapa).
 const TEST_TREE_CELLS: Array[Vector2i] = [
 	Vector2i(24, 4), Vector2i(26, 6), Vector2i(28, 5), Vector2i(27, 8), Vector2i(30, 7),
@@ -157,6 +165,7 @@ func _spawn_test_trees() -> void:
 	for cell in TEST_TREE_CELLS:
 		var tree: WoodTree = tree_scene.instantiate()
 		tree.cell = cell
+		tree.data = TREE_TYPES.pick_random()
 		# Base do tronco um pouco abaixo do centro da célula.
 		tree.position = _world.cell_to_center(cell) + Vector2(0, 20)
 		_world.block_cell(cell)

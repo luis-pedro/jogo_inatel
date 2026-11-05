@@ -32,7 +32,7 @@ Coletar recursos ──► Construir / Recrutar ──► Expandir território
 |---|---|---|---|
 | Comida | Manter a população **[A definir]** | **[A definir]** | `Terrain/Resources/Meat` |
 | Ouro | Recrutar unidades **[A definir]** | Minas de ouro | `Terrain/Resources/Gold` |
-| Madeira | Construções | Árvores (cortadas por aldeões) | `Terrain/Resources/Wood` |
+| Madeira | Construções | Árvores (4 tipos, sorteados no mapa; cada uma deixa o toco do seu tipo) | `Terrain/Resources/Wood` |
 
 Valores iniciais provisórios (em `scripts/autoload/game_state.gd`): **50 comida, 20 ouro, 100 madeira**.
 

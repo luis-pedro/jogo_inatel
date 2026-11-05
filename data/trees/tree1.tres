@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TreeData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/tree_data.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/Terrain/Resources/Wood/Trees/Tree1.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/Terrain/Resources/Wood/Trees/Stump 1.png" id="3"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Pinheiro"
+tree_texture = ExtResource("2")
+tree_frame_size = Vector2i(192, 256)
+tree_feet_y = 228
+stump_texture = ExtResource("3")
+stump_frame_size = Vector2i(192, 256)
+stump_feet_y = 228
+click_size = Vector2(100, 170)
