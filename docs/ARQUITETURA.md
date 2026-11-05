@@ -26,7 +26,7 @@ Scripts ligados a uma única cena podem ficar na mesma pasta da cena (`house.tsc
 | Mapa | `scripts/world/world.gd` | Ilha de grama (TileMapLayer montado por código), conversão célula↔mundo (grade de 64 px), células bloqueadas (prédios, árvores) e **pathfinding** com `AStarGrid2D`. |
 | Construção | `scripts/buildings/build_manager.gd`, `building.gd`, `building_data.gd` | Fantasma na grade, validação, custo e criação. Cada tipo de prédio é um `BuildingData` em `data/buildings/*.tres`. |
 | Aldeões | `scripts/units/pawn.gd` | Máquina de estados IDLE ⇄ WALK (passeio) e TO_TREE → CHOP → TO_HOME (tarefa de cortar, com mochila e entrega na porta da casa). Anima por código a partir das faixas de frames. |
-| Recursos coletáveis | `scripts/resources/wood_tree.gd` | Árvore (`Area2D` na camada `collectibles`): madeira restante, `worker` (quem corta), toco ao acabar e **rebrota** após `roll_regrow_time()` (sorteio na faixa `regrow_time_min`/`regrow_time_max` do `TreeData` do tipo). |
+| Recursos coletáveis | `scripts/resources/wood_tree.gd` | Árvore (`Area2D` na camada `collectibles`) com estágios `GROWN → STUMP → SAPLING → GROWN` (ou `REMOVED` ao ser arrancada com `uproot()`, que faz `queue_free()` e emite `removed` para o mapa liberar a célula). A rebrota após `roll_regrow_time()` é contada em `_process` e **pausa enquanto há um `worker` reservado**; só o toco usa `_process`. |
 | Tipos de árvore | `scripts/resources/tree_data.gd`, `data/trees/tree1..4.tres` | `TreeData`: sprites da árvore e do toco, tamanho de frame, altura da base de cada um, área clicável, faixa de madeira (`wood_min`/`wood_max`) e de tempo de rebrota (`regrow_time_min`/`regrow_time_max`). A `WoodTree` lê esses dados; `main.gd` sorteia um tipo por árvore. Para um tipo novo, duplique um `.tres` e adicione a `TREE_TYPES`. |
 | Sprites | `scripts/core/sprite_sheets.gd` | `SpriteSheets.add_animation()` fatia faixas horizontais de frames em `SpriteFrames`. |
 | Interface | `scripts/ui/hud.gd` | Recursos, população e botão de construir. |
@@ -71,6 +71,8 @@ Tela cheia por padrão (`window/size/mode = Fullscreen`), **F11** alterna para j
 | `GameState` | `scripts/autoload/game_state.gd` | Recursos (comida, ouro, madeira), casas e população. Emite `resources_changed` e `population_changed`. |
 
 **Aldeões disponíveis:** `GameState.population` é o total e `busy_villagers` os ocupados; `available_villagers()` é a diferença. Quem começa uma tarefa chama `reserve_villager()` e quem termina chama `release_villager()`. O sinal `villagers_changed` atualiza o HUD.
+
+**Ordens sobre árvores:** `main.gd` acha o alvo pela física (camada `collectibles`) e manda o aldeão mais próximo. Árvore adulta → meta `CHOP`; toco → meta `UPROOT` (`Pawn.Goal`). O aldeão reserva a árvore (`worker`) na hora da ordem. Se ao chegar a árvore está adulta, corta primeiro (estado `CHOP`); se é muda, espera (`WAIT_GROWTH`); depois, se a meta era arrancar, vai ao toco. Árvore arrancada: `_tree = null` no aldeão, `World.unblock_cell()` no mapa.
 
 **Entrega de recursos:** o aldeão guarda `_carried_wood` e só chama `GameState.add_resource` ao chegar na porta da casa. Se não houver caminho até a porta, entrega onde está (a madeira nunca se perde nem o aldeão fica preso na tarefa).
 
