@@ -3,7 +3,10 @@ extends Node2D
 ## Controla a construção: fantasma que segue o mouse na grade, validação e criação do prédio.
 
 signal placing_changed(is_placing: bool)
-signal building_placed(building: Building)
+## Prédio pronto (o inicial, na hora; os do jogador, quando a obra termina).
+signal building_completed(building: Building)
+## Clique de construção recusado; `reason` é a mensagem para o jogador.
+signal placement_failed(reason: String)
 
 const BUILDING_SCENE := preload("res://scenes/buildings/building.tscn")
 const VALID_COLOR := Color(0.6, 1.0, 0.6, 0.7)
@@ -70,35 +73,94 @@ func stop_placing() -> void:
 	placing_changed.emit(false)
 
 
-## Constrói pagando o custo. Retorna se a construção foi feita.
+## Marca a obra, paga o custo e manda um aldeão construir. Retorna se conseguiu.
 func try_place(data: BuildingData, cell: Vector2i) -> bool:
-	if not _can_place(data, cell) or not GameState.spend(data.cost):
+	var problem := _placement_problem(data, cell)
+	if not problem.is_empty():
+		placement_failed.emit(problem)
 		return false
-	place(data, cell, _variant)
-	GameState.add_house()
+	# Bloqueia antes de procurar o construtor: o caminho dele já tem que desviar da própria obra.
+	_block_footprint(data, cell, true)
+	var task := _find_builder(data, cell)
+	if task.is_empty():
+		_block_footprint(data, cell, false)
+		placement_failed.emit("Nenhum aldeão consegue chegar até a obra.")
+		return false
+	GameState.spend(data.cost)
+	var site := _create_building(data, cell, _variant)
+	site.construction_finished.connect(_on_construction_finished)
+	site.start_construction()
+	task.pawn.assign_build(site, task.path)
 	return true
 
 
-## Põe o prédio no mapa sem custo nem validação (ex.: casa inicial).
+## Põe um prédio já pronto no mapa, sem custo nem validação (ex.: casa inicial).
 func place(data: BuildingData, cell: Vector2i, variant := 0) -> Building:
-	var building: Building = BUILDING_SCENE.instantiate()
-	building.setup(data, cell, World.TILE_SIZE, variant)
-	# Só entra no grupo quando construída (o fantasma também é um Building).
-	building.add_to_group(PhysicsLayers.GROUP_BUILDINGS)
-	buildings_root.add_child(building)
-	for covered in _footprint_cells(data, cell):
-		world.block_cell(covered)
-	building_placed.emit(building)
+	_block_footprint(data, cell, true)
+	var building := _create_building(data, cell, variant)
+	building_completed.emit(building)
 	return building
 
 
-func _can_place(data: BuildingData, cell: Vector2i) -> bool:
+func _create_building(data: BuildingData, cell: Vector2i, variant: int) -> Building:
+	var building: Building = BUILDING_SCENE.instantiate()
+	building.setup(data, cell, World.TILE_SIZE, variant)
+	# Só entra no grupo quando está no mapa (o fantasma também é um Building).
+	building.add_to_group(PhysicsLayers.GROUP_BUILDINGS)
+	buildings_root.add_child(building)
+	return building
+
+
+## Os aldeões da casa só nascem quando a obra termina.
+func _on_construction_finished(building: Building) -> void:
+	GameState.add_house()
+	building_completed.emit(building)
+
+
+## Procura o aldeão livre mais próximo. Prefere que ele trabalhe pela frente (onde aparece por cima
+## da poeira da obra); pelos lados ou atrás, onde a casa o esconderia, só se não houver outro lugar.
+func _find_builder(data: BuildingData, cell: Vector2i) -> Dictionary:
+	var front: Array[Vector2i] = []
+	var sides: Array[Vector2i] = []
+	var back: Array[Vector2i] = []
+	for x in data.footprint.x:
+		front.append(cell + Vector2i(x, data.footprint.y))
+		back.append(cell + Vector2i(x, -1))
+	for y in data.footprint.y:
+		sides.append(cell + Vector2i(-1, y))
+		sides.append(cell + Vector2i(data.footprint.x, y))
+
+	var units := get_tree().get_nodes_in_group(PhysicsLayers.GROUP_UNITS)
+	for goals: Array[Vector2i] in [front, sides, back]:
+		var task := Pawn.find_nearest_available(units,
+				func(pawn: Pawn): return world.find_path_to_any(pawn.position, goals))
+		if not task.is_empty():
+			return task
+	return {}
+
+
+## Por que não dá para construir aqui ("" se dá).
+func _placement_problem(data: BuildingData, cell: Vector2i) -> String:
 	if not GameState.can_afford(data.cost):
-		return false
+		return "Recursos insuficientes."
 	for covered in _footprint_cells(data, cell):
 		if not world.is_cell_free(covered):
-			return false
-	return true
+			return "Não dá para construir aí."
+	if GameState.available_villagers() <= 0:
+		return "Nenhum aldeão disponível para construir."
+	return ""
+
+
+func _can_place(data: BuildingData, cell: Vector2i) -> bool:
+	return _placement_problem(data, cell).is_empty()
+
+
+func _block_footprint(data: BuildingData, cell: Vector2i, blocked: bool) -> void:
+	for covered in _footprint_cells(data, cell):
+		if blocked:
+			world.block_cell(covered)
+		else:
+			world.unblock_cell(covered)
 
 
 func _footprint_cells(data: BuildingData, cell: Vector2i) -> Array[Vector2i]:
