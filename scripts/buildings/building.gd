@@ -2,8 +2,8 @@ class_name Building
 extends Node2D
 ## Construção posta no mapa. A origem do nó é o canto inferior esquerdo da área ocupada
 ## no chão, para o y_sort ordenar os prédios pela base.
-## Em obra, fica invisível até um aldeão chegar; depois é erguida de baixo para cima
-## enquanto ele chama `advance_construction()`.
+## Em obra, mostra um canteiro com a madeira até um aldeão chegar; depois é erguida de baixo
+## para cima enquanto ele chama `advance_construction()`.
 
 signal construction_finished(building: Building)
 
@@ -14,6 +14,11 @@ const DUST_SCALE := 3.0
 ## Altura do centro da nuvem, como fração da altura do sprite do prédio (a partir da base).
 const DUST_CENTER_HEIGHT := 0.52
 const BAR_SIZE := Vector2(90, 12)
+## Canteiro desenhado para uma área de 128x128 px (2x2 tiles); é esticado para outros tamanhos.
+const SITE_TEXTURE := preload("res://assets/custom/construction_site.png")
+const MATERIAL_TEXTURE := preload("res://assets/Terrain/Resources/Wood/Wood Resource/Wood Resource.png")
+## Posição de cada tora no canteiro, como fração da área ocupada (0,0 = canto superior esquerdo).
+const MATERIAL_SPOTS: Array[Vector2] = [Vector2(0.36, 0.7), Vector2(0.66, 0.68), Vector2(0.5, 0.54)]
 
 var data: BuildingData
 var cell: Vector2i
@@ -24,7 +29,9 @@ var under_construction := false
 var progress := 0.0
 
 var _tile_size := 64
-## Nós que só existem durante a obra (parte já erguida, poeira e barra).
+## Nós que só existem durante a obra (canteiro, madeira, parte já erguida, poeira e barra).
+var _site_ground: Sprite2D
+var _material: Node2D
 var _reveal: Sprite2D
 var _bar: ProgressBar
 var _dust: AnimatedSprite2D
@@ -49,11 +56,12 @@ func _ready() -> void:
 
 
 ## Transforma o prédio em obra. Chamar depois de ele entrar na árvore da cena.
-## Nada aparece no terreno até o primeiro `advance_construction()`, ou seja, até o aldeão chegar.
+## Até o primeiro `advance_construction()` (o aldeão chegar) só aparecem o canteiro e a madeira.
 func start_construction() -> void:
 	under_construction = true
 	progress = 0.0
 	_sprite.visible = false
+	_create_construction_site()
 
 
 ## Soma trabalho à obra (chamado pelo aldeão construtor a cada frame de física).
@@ -61,11 +69,33 @@ func advance_construction(delta: float) -> void:
 	if not under_construction:
 		return
 	if _reveal == null:
+		# O aldeão chegou: pega a madeira do canteiro e começa a erguer a casa.
+		_material.queue_free()
 		_create_construction_visuals()
 	progress = minf(progress + delta / data.build_time, 1.0)
 	_update_construction_visual()
 	if progress >= 1.0:
 		_finish_construction()
+
+
+## Chão marcado com estacas e a madeira que o aldeão vai usar.
+func _create_construction_site() -> void:
+	var area := Vector2(data.footprint * _tile_size)
+
+	_site_ground = Sprite2D.new()
+	_site_ground.texture = SITE_TEXTURE
+	_site_ground.centered = false
+	_site_ground.position = Vector2(0, -area.y)
+	_site_ground.scale = area / SITE_TEXTURE.get_size()
+	add_child(_site_ground)
+
+	_material = Node2D.new()
+	add_child(_material)
+	for spot in MATERIAL_SPOTS:
+		var log_sprite := Sprite2D.new()
+		log_sprite.texture = MATERIAL_TEXTURE
+		log_sprite.position = Vector2(area.x * spot.x, area.y * (spot.y - 1.0))
+		_material.add_child(log_sprite)
 
 
 ## Parte já erguida, poeira e barra de progresso.
@@ -98,6 +128,7 @@ func _update_construction_visual() -> void:
 func _finish_construction() -> void:
 	under_construction = false
 	_sprite.visible = true
+	_site_ground.queue_free()
 	_reveal.queue_free()
 	_bar.queue_free()
 	# A poeira toca uma última vez e se remove: o "puff" de obra pronta.
