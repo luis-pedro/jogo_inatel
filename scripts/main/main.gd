@@ -30,9 +30,9 @@ const GOLD_TYPES := [
 	preload("res://data/gold/gold6.tres"),
 ]
 
-## O ouro nasce em poucos veios (grupos de pedras vizinhas), longe da casa e uns dos outros.
-const GOLD_VEIN_COUNT := 3
-const GOLD_PER_VEIN := Vector2i(3, 5)  # mín., máx.
+## O ouro nasce em poucos veios (grupos de minérios vizinhos), longe da casa e uns dos outros.
+const GOLD_VEIN_COUNT := 2
+const GOLD_PER_VEIN := Vector2i(3, 4)  # mín., máx.
 const GOLD_CLEARING_RADIUS := 10.0
 const GOLD_VEIN_SPACING := 10.0
 ## Distância (em células) em volta do ouro onde não nascem árvores, para dar acesso ao veio.
@@ -201,8 +201,8 @@ func _spawn_gold() -> Array[Vector2i]:
 	return occupied
 
 
-## Sorteia as células de um veio: cada pedra nova encosta (inclusive na diagonal) numa já
-## escolhida, sem deixar nenhuma pedra sem um lado livre para o aldeão chegar.
+## Sorteia as células de um veio: cada minério novo encosta (inclusive na diagonal) num já
+## escolhido, sem deixar nenhum sem um lado livre para o aldeão chegar.
 func _grow_vein(start: Vector2i, size: int) -> Array[Vector2i]:
 	var vein: Array[Vector2i] = [start]
 	for attempt in 100:

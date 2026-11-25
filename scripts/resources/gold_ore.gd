@@ -5,7 +5,7 @@ extends Gatherable
 ## Tipo usado quando nenhum é definido antes de o minério entrar na cena.
 const DEFAULT_DATA := preload("res://data/gold/gold1.tres")
 const SHINE_FPS := 10.0
-## Pausa entre um brilho e outro, em segundos (sorteada para cada pedra).
+## Pausa entre um brilho e outro, em segundos (sorteada para cada minério).
 const SHINE_PAUSE := Vector2(2.0, 5.0)
 
 ## Tipo do minério (sprite e quantidade). Definir antes de entrar na cena.
@@ -29,18 +29,18 @@ func _ready() -> void:
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
 	SpriteSheets.add_animation(frames, "shine", data.texture, data.frame_size, SHINE_FPS)
-	# O primeiro frame (pedra parada) dura bem mais: brilha de vez em quando sem precisar de Timer.
+	# O primeiro frame (minério parado) dura bem mais: brilha de vez em quando sem precisar de Timer.
 	var pause := randf_range(SHINE_PAUSE.x, SHINE_PAUSE.y)
 	frames.set_frame("shine", 0, frames.get_frame_texture("shine", 0), pause * SHINE_FPS)
 	_sprite.sprite_frames = frames
-	# Origem do nó na base da pedra, para o y_sort ordenar corretamente.
+	# Origem do nó na base do minério, para o y_sort ordenar corretamente.
 	_sprite.offset = Vector2(0, data.frame_size.y / 2.0 - data.feet_y)
 	_sprite.play("shine")
 	_sprite.frame_progress = randf()
 	_set_click_size(data.click_size)
 
 
-## A área clicável acompanha o desenho da pedra, então serve de medida do tamanho dela.
+## A área clicável acompanha o desenho do minério, então serve de medida do tamanho dele.
 func get_work_extent() -> Vector2:
 	return Vector2(data.click_size.x / 2.0 - 4.0, data.click_size.y)
 
