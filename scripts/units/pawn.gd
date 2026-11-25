@@ -182,11 +182,12 @@ func _finish_building() -> void:
 	_start_idle()
 
 
-## Segue `path` até a célula vizinha do recurso e dá o último passo até encostar nele.
+## Segue `path` até o recurso: o último ponto (centro da célula vizinha) é trocado pelo ponto de
+## trabalho, para o aldeão ir direto até lá, sem passar dele e voltar.
 func _walk_to_source(path: PackedVector2Array) -> void:
 	if not path.is_empty():
 		_approach_point = path[path.size() - 1]
-		path.append(_source.get_work_position(_approach_point))
+		path[path.size() - 1] = _source.get_work_position(_approach_point)
 	_begin_path(State.TO_SOURCE, path, JOBS[_source.resource_type].travel)
 
 
@@ -241,17 +242,18 @@ func _finish_uproot() -> void:
 
 
 func _go_home() -> void:
-	# Encostado no recurso o aldeão pode estar dentro da célula dele; sai por onde entrou.
-	var start := _approach_point if _at_source else position
-	var path := _world.find_path(start, _home)
+	# Trabalhando por trás, o aldeão fica dentro da célula do recurso; nesse caso sai pela célula
+	# vizinha por onde chegou.
+	var leave_through_approach := _at_source and not _world.is_point_walkable(position)
+	var path := _world.find_path(_approach_point if leave_through_approach else position, _home)
 	if path.is_empty():
 		# Sem caminho até a porta (ex.: cercada por construções): entrega aqui mesmo,
 		# para a carga não se perder nem o aldeão ficar preso na tarefa.
 		_deliver()
 		return
-	if _at_source:
+	if leave_through_approach:
 		path.insert(0, _approach_point)
-		_at_source = false
+	_at_source = false
 	_begin_path(State.TO_HOME, path, JOBS[_carried_type].carry)
 
 
@@ -279,10 +281,10 @@ func _should_return_to_source() -> bool:
 
 
 func _finish_task() -> void:
-	if _at_source:
-		# Terminou encostado no recurso: volta à célula vizinha para não ficar em cima dele.
+	if _at_source and not _world.is_point_walkable(position):
+		# Terminou em cima da célula do recurso: volta à célula vizinha.
 		position = _approach_point
-		_at_source = false
+	_at_source = false
 	if _source != null and is_instance_valid(_source):
 		_source.worker = null  # libera o recurso (e um toco volta a contar o crescimento)
 	_source = null

@@ -16,6 +16,8 @@ var worker: Node2D
 
 ## Alcance (px) da ferramenta do aldeão, do centro dele até onde ela bate.
 const TOOL_REACH := 22.0
+## Desvio lateral máximo (px) pela frente ou por trás, para não passar para a célula na diagonal.
+const MAX_FRONT_SHIFT := 30.0
 
 var _click_shape := RectangleShape2D.new()
 
@@ -45,7 +47,7 @@ func get_work_position(from_point: Vector2) -> Vector2:
 	if side.x != 0:
 		return position + Vector2(signi(side.x) * (extent.x + TOOL_REACH), 2)
 	# Pela frente ou por trás fica um pouco à esquerda, virado para o recurso: o golpe é lateral.
-	var x := -(extent.x * 0.7 + TOOL_REACH * 0.8)
+	var x := -minf(extent.x * 0.7 + TOOL_REACH * 0.8, MAX_FRONT_SHIFT)
 	return position + Vector2(x, 20.0 if side.y > 0 else -extent.y * 0.45)
 
 

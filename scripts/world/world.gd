@@ -82,10 +82,14 @@ func nearest_free_point(point: Vector2) -> Vector2:
 	return cell_to_center(_nearest_walkable_cell(cell))
 
 
-## Caminho (centros de células) de `from_point` até a célula de `to_point`.
+## Caminho de `from_point` até exatamente `to_point`, passando pelos centros das células.
 ## Vazio se não houver caminho (ex.: destino bloqueado ou cercado).
 func find_path(from_point: Vector2, to_point: Vector2) -> PackedVector2Array:
-	return find_path_to_any(from_point, [world_to_cell(to_point)])
+	var path := find_path_to_any(from_point, [world_to_cell(to_point)])
+	if not path.is_empty():
+		# O último passo vai ao ponto em si, e não ao centro da célula onde ele está.
+		path[path.size() - 1] = to_point
+	return path
 
 
 ## Caminho de `from_point` até uma célula vizinha livre de `target_cell`.
