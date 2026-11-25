@@ -117,20 +117,21 @@ func _on_construction_finished(building: Building) -> void:
 	building_completed.emit(building)
 
 
-## Procura o aldeão livre mais próximo. Prefere que ele trabalhe pela frente ou pelos lados;
-## atrás (onde a casa o esconderia) só se não houver outro lugar.
+## Procura o aldeão livre mais próximo. Prefere que ele trabalhe pela frente (onde aparece por cima
+## da poeira da obra); pelos lados ou atrás, onde a casa o esconderia, só se não houver outro lugar.
 func _find_builder(data: BuildingData, cell: Vector2i) -> Dictionary:
-	var front_and_sides: Array[Vector2i] = []
+	var front: Array[Vector2i] = []
+	var sides: Array[Vector2i] = []
 	var back: Array[Vector2i] = []
 	for x in data.footprint.x:
-		front_and_sides.append(cell + Vector2i(x, data.footprint.y))
+		front.append(cell + Vector2i(x, data.footprint.y))
 		back.append(cell + Vector2i(x, -1))
 	for y in data.footprint.y:
-		front_and_sides.append(cell + Vector2i(-1, y))
-		front_and_sides.append(cell + Vector2i(data.footprint.x, y))
+		sides.append(cell + Vector2i(-1, y))
+		sides.append(cell + Vector2i(data.footprint.x, y))
 
 	var units := get_tree().get_nodes_in_group(PhysicsLayers.GROUP_UNITS)
-	for goals: Array[Vector2i] in [front_and_sides, back]:
+	for goals: Array[Vector2i] in [front, sides, back]:
 		var task := Pawn.find_nearest_available(units,
 				func(pawn: Pawn): return world.find_path_to_any(pawn.position, goals))
 		if not task.is_empty():

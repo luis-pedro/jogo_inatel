@@ -74,7 +74,7 @@ Tela cheia por padrão (`window/size/mode = Fullscreen`), **F11** alterna para j
 
 **Ordens sobre árvores:** `main.gd` acha o alvo pela física (camada `collectibles`) e manda o aldeão mais próximo. Árvore adulta → meta `CHOP`; toco → meta `UPROOT` (`Pawn.Goal`). O aldeão reserva a árvore (`worker`) na hora da ordem. Se ao chegar a árvore está adulta, corta primeiro (estado `CHOP`); se é muda, espera (`WAIT_GROWTH`); depois, se a meta era arrancar, vai ao toco. Árvore arrancada: `_tree = null` no aldeão, `World.unblock_cell()` no mapa.
 
-**Obras:** `BuildManager.try_place` valida, bloqueia o terreno, procura o aldeão livre mais próximo (`Pawn.find_nearest_available`, preferindo frente e lados) e só então paga e cria o `Building` em obra. O aldeão (estados `TO_SITE` → `BUILD`) chama `advance_construction(delta)`; ao terminar, o `Building` emite `construction_finished`, o `BuildManager` chama `GameState.add_house()` e emite `building_completed`, e `main.gd` cria os aldeões. Se ninguém chega, o terreno é liberado e nada é cobrado.
+**Obras:** `BuildManager.try_place` valida, bloqueia o terreno, procura o aldeão livre mais próximo (`Pawn.find_nearest_available`, preferindo a frente, depois os lados) e só então paga e cria o `Building` em obra. O aldeão (estados `TO_SITE` → `BUILD`) chama `advance_construction(delta)`; ao terminar, o `Building` emite `construction_finished`, o `BuildManager` chama `GameState.add_house()` e emite `building_completed`, e `main.gd` cria os aldeões. Se ninguém chega, o terreno é liberado e nada é cobrado.
 
 **Pathfinding de quem está bloqueado:** `World.find_path_to_any` parte da célula livre mais próxima se o aldeão estiver dentro de uma área bloqueada (ex.: obra marcada em cima dele).
 

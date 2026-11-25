@@ -7,9 +7,12 @@ extends Node2D
 
 signal construction_finished(building: Building)
 
-const DUST_TEXTURE := preload("res://assets/Particle FX/Dust_01.png")
+const DUST_TEXTURE := preload("res://assets/Particle FX/Dust_02.png")
 const DUST_FRAME_SIZE := Vector2i(64, 64)
-const DUST_PUFFS := 3
+## A nuvem ocupa quase todo o frame de 64 px; com esta escala ela cobre a casa inteira.
+const DUST_SCALE := 3.0
+## Altura do centro da nuvem, como fração da altura do sprite do prédio (a partir da base).
+const DUST_CENTER_HEIGHT := 0.52
 const BAR_SIZE := Vector2(90, 12)
 
 var data: BuildingData
@@ -24,7 +27,7 @@ var _tile_size := 64
 ## Nós que só existem durante a obra (parte já erguida, poeira e barra).
 var _reveal: Sprite2D
 var _bar: ProgressBar
-var _dust: Array[AnimatedSprite2D] = []
+var _dust: AnimatedSprite2D
 
 @onready var _sprite: Sprite2D = $Sprite2D
 
@@ -74,10 +77,8 @@ func _create_construction_visuals() -> void:
 	add_child(_reveal)
 
 	var footprint_width := data.footprint.x * _tile_size
-	for i in DUST_PUFFS:
-		var puff := _create_dust()
-		puff.position = Vector2(footprint_width * (i + 0.5) / DUST_PUFFS, -8)
-		_dust.append(puff)
+	_dust = _create_dust()
+	_dust.position = Vector2(footprint_width / 2.0, -_sprite.texture.get_height() * DUST_CENTER_HEIGHT)
 
 	_bar = _create_progress_bar()
 	_bar.position = Vector2((footprint_width - BAR_SIZE.x) / 2.0, -_sprite.texture.get_height() - BAR_SIZE.y)
@@ -99,13 +100,12 @@ func _finish_construction() -> void:
 	_sprite.visible = true
 	_reveal.queue_free()
 	_bar.queue_free()
-	for puff in _dust:
-		# A poeira termina o ciclo atual e se remove: um último "puff" de obra pronta.
-		puff.sprite_frames.set_animation_loop("dust", false)
-		puff.animation_finished.connect(puff.queue_free)
-		puff.frame = 0
-		puff.play("dust")
-	_dust.clear()
+	# A poeira toca uma última vez e se remove: o "puff" de obra pronta.
+	_dust.sprite_frames.set_animation_loop("dust", false)
+	_dust.animation_finished.connect(_dust.queue_free)
+	_dust.frame = 0
+	_dust.play("dust")
+	_dust = null
 	construction_finished.emit(self)
 
 
@@ -115,10 +115,9 @@ func _create_dust() -> AnimatedSprite2D:
 	SpriteSheets.add_animation(frames, "dust", DUST_TEXTURE, DUST_FRAME_SIZE, 10.0)
 	var puff := AnimatedSprite2D.new()
 	puff.sprite_frames = frames
-	puff.scale = Vector2(1.5, 1.5)
+	puff.scale = Vector2.ONE * DUST_SCALE
 	add_child(puff)
 	puff.play("dust")
-	puff.frame = randi() % frames.get_frame_count("dust")
 	return puff
 
 
