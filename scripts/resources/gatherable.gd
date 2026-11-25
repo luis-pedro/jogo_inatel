@@ -1,12 +1,12 @@
 class_name Gatherable
 extends Area2D
-## Base de tudo que um aldeão coleta com um clique (árvore, minério de ouro...).
+## Base de tudo que um aldeão coleta com um clique (árvore, minério de ouro, ovelha).
 ## É uma Area2D na camada `collectibles` só para o clique do jogador achá-la.
 
 ## Saiu do mapa de vez; quem bloqueou a célula deve liberá-la.
 signal removed(source: Gatherable)
 
-## Recurso que entrega ao estoque ("wood", "gold"). Definido por quem herda.
+## Recurso que entrega ao estoque ("wood", "gold", "food"). Definido por quem herda.
 var resource_type := ""
 ## Célula do mapa que ocupa.
 var cell: Vector2i
@@ -39,16 +39,27 @@ func can_harvest() -> bool:
 	return false
 
 
+## Se ocupa a célula a ponto de os aldeões terem que contornar.
+func blocks_movement() -> bool:
+	return true
+
+
+## Posição de referência para o golpe (quem anda informa onde vai parar).
+func get_anchor_position() -> Vector2:
+	return position
+
+
 ## Ponto onde o aldeão trabalha, com a ferramenta encostando no recurso, para quem chega pela
 ## célula vizinha que contém `from_point`.
 func get_work_position(from_point: Vector2) -> Vector2:
 	var side := Vector2i((from_point / World.TILE_SIZE).floor()) - cell
 	var extent := get_work_extent()
+	var anchor := get_anchor_position()
 	if side.x != 0:
-		return position + Vector2(signi(side.x) * (extent.x + TOOL_REACH), 2)
+		return anchor + Vector2(signi(side.x) * (extent.x + TOOL_REACH), 2)
 	# Pela frente ou por trás fica um pouco à esquerda, virado para o recurso: o golpe é lateral.
 	var x := -minf(extent.x * 0.7 + TOOL_REACH * 0.8, MAX_FRONT_SHIFT)
-	return position + Vector2(x, 20.0 if side.y > 0 else -extent.y * 0.45)
+	return anchor + Vector2(x, 20.0 if side.y > 0 else -extent.y * 0.45)
 
 
 ## Tamanho da parte do recurso em que o aldeão bate: (meia largura, altura), em px.

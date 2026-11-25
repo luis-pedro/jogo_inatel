@@ -1,13 +1,16 @@
 class_name World
 extends Node2D
 ## Mapa do reino: uma ilha de grama cercada de água, desenhada com o tileset do Tiny Swords.
-## Também guarda quais células estão bloqueadas (prédios, árvores) e faz o pathfinding.
+## Também guarda quais células estão bloqueadas (prédios, árvores) ou ocupadas por animais e
+## faz o pathfinding.
 
 const TILE_SIZE := 64
 const MAP_SIZE := Vector2i(40, 24)  # em tiles
 const GRASS_TEXTURE := preload("res://assets/Terrain/Tileset/Tilemap_color1.png")
 
 var _blocked: Dictionary = {}  # Vector2i -> true
+## Células com um animal: não dá para construir nelas, mas os aldeões passam.
+var _occupied: Dictionary = {}  # Vector2i -> true
 var _astar := AStarGrid2D.new()
 
 @onready var _ground: TileMapLayer = $Ground
@@ -65,13 +68,22 @@ func is_blocked(cell: Vector2i) -> bool:
 	return _blocked.has(cell)
 
 
-## Dentro da ilha e sem nada ocupando a célula.
+func occupy_cell(cell: Vector2i) -> void:
+	_occupied[cell] = true
+
+
+func release_cell(cell: Vector2i) -> void:
+	_occupied.erase(cell)
+
+
+## Dentro da ilha e sem nada ocupando a célula: dá para construir ou colocar algo.
 func is_cell_free(cell: Vector2i) -> bool:
-	return is_buildable(cell) and not is_blocked(cell)
+	return is_buildable(cell) and not is_blocked(cell) and not _occupied.has(cell)
 
 
 func is_point_walkable(point: Vector2) -> bool:
-	return is_cell_free(world_to_cell(point))
+	var cell := world_to_cell(point)
+	return is_buildable(cell) and not is_blocked(cell)
 
 
 ## Se o ponto estiver bloqueado, devolve o centro da célula livre mais próxima.

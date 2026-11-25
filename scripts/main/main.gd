@@ -5,10 +5,12 @@ extends Node2D
 ## Acima disso é um arrasto (da câmera).
 const CLICK_DRAG_THRESHOLD := 8.0
 
-## Cursor mostrado sobre cada recurso que dá para coletar: machado na árvore, picareta no ouro.
+## Cursor mostrado sobre cada recurso que dá para coletar: machado na árvore, picareta no ouro
+## e faca na ovelha.
 const TOOL_CURSOR_TEXTURES := {
 	"wood": preload("res://assets/Terrain/Resources/Tools/Tool_02.png"),
 	"gold": preload("res://assets/Terrain/Resources/Tools/Tool_04.png"),
+	"food": preload("res://assets/Terrain/Resources/Tools/Tool_03.png"),
 }
 const TOOL_CURSOR_SIZE := 80
 
@@ -38,6 +40,16 @@ const GOLD_VEIN_SPACING := 10.0
 ## Distância (em células) em volta do ouro onde não nascem árvores, para dar acesso ao veio.
 const GOLD_TREE_MARGIN := 1.5
 
+## As ovelhas nascem em rebanhos, num pasto sem árvores em volta.
+const FLOCK_COUNT := 3
+const SHEEP_PER_FLOCK := Vector2i(3, 4)  # mín., máx.
+const FLOCK_CLEARING_RADIUS := 7.0
+const FLOCK_SPACING := 9.0
+## Distância (em células) em volta do centro do rebanho onde se espalham as ovelhas e onde não
+## nascem árvores.
+const FLOCK_SPREAD := 2.0
+const PASTURE_TREE_MARGIN := 4.5
+
 ## Quantas árvores nascem no mapa e quão longe da casa inicial (em células) fica a clareira
 ## onde não nasce nenhuma, para o começo não ficar apertado.
 const TREE_COUNT := 50
@@ -47,6 +59,7 @@ const START_CLEARING_RADIUS := 6.0
 @export var pawn_scene: PackedScene
 @export var tree_scene: PackedScene
 @export var gold_scene: PackedScene
+@export var sheep_scene: PackedScene
 
 var _press_pending := false
 var _press_position := Vector2.ZERO
@@ -73,7 +86,8 @@ func _ready() -> void:
 	var start_cell := _world.get_center_cell() - house_data.footprint / 2
 	_build_manager.place(house_data, start_cell)
 	var gold_cells := _spawn_gold()
-	_spawn_trees(gold_cells)
+	var flock_centers := _spawn_flocks(gold_cells)
+	_spawn_trees(gold_cells, flock_centers)
 	_camera.position = _world.cell_to_world(_world.get_center_cell())
 	_camera.reset_smoothing()
 
@@ -184,21 +198,41 @@ func _assign_gatherer(source: Gatherable) -> void:
 ## Cria os veios de ouro e devolve as células ocupadas.
 func _spawn_gold() -> Array[Vector2i]:
 	var occupied: Array[Vector2i] = []
-	var centers: Array[Vector2i] = []
-	var house := _world.get_center_cell()
-	var candidates := _free_cells(func(cell: Vector2i):
-		return Vector2(cell - house).length() >= GOLD_CLEARING_RADIUS and _is_away_from_border(cell))
-	candidates.shuffle()
-	for start in candidates:
-		if centers.size() >= GOLD_VEIN_COUNT:
-			break
-		if centers.any(func(other: Vector2i): return Vector2(start - other).length() < GOLD_VEIN_SPACING):
-			continue
-		centers.append(start)
-		for cell in _grow_vein(start, randi_range(GOLD_PER_VEIN.x, GOLD_PER_VEIN.y)):
+	for center in _pick_group_centers(GOLD_VEIN_COUNT, GOLD_CLEARING_RADIUS, GOLD_VEIN_SPACING, []):
+		for cell in _grow_vein(center, randi_range(GOLD_PER_VEIN.x, GOLD_PER_VEIN.y)):
 			_spawn_gold_ore(cell)
 			occupied.append(cell)
 	return occupied
+
+
+## Cria os rebanhos, longe dos veios de ouro, e devolve o centro de cada um.
+func _spawn_flocks(gold_cells: Array[Vector2i]) -> Array[Vector2i]:
+	var centers := _pick_group_centers(FLOCK_COUNT, FLOCK_CLEARING_RADIUS, FLOCK_SPACING, gold_cells)
+	for center in centers:
+		var pasture := _free_cells(func(cell: Vector2i):
+			return Vector2(cell - center).length() <= FLOCK_SPREAD and _is_away_from_border(cell))
+		pasture.shuffle()
+		for i in mini(randi_range(SHEEP_PER_FLOCK.x, SHEEP_PER_FLOCK.y), pasture.size()):
+			_spawn_sheep(pasture[i])
+	return centers
+
+
+## Sorteia até `count` células livres para centros de grupos: a pelo menos `house_distance` da
+## casa inicial, a `spacing` umas das outras e longe das células em `avoid`.
+func _pick_group_centers(count: int, house_distance: float, spacing: float,
+		avoid: Array[Vector2i]) -> Array[Vector2i]:
+	var house := _world.get_center_cell()
+	var candidates := _free_cells(func(cell: Vector2i):
+		return Vector2(cell - house).length() >= house_distance and _is_away_from_border(cell) \
+				and not avoid.any(func(other: Vector2i): return Vector2(cell - other).length() < spacing / 2.0))
+	candidates.shuffle()
+	var centers: Array[Vector2i] = []
+	for cell in candidates:
+		if centers.size() >= count:
+			break
+		if not centers.any(func(other: Vector2i): return Vector2(cell - other).length() < spacing):
+			centers.append(cell)
+	return centers
 
 
 ## Sorteia as células de um veio: cada minério novo encosta (inclusive na diagonal) num já
@@ -239,6 +273,12 @@ func _free_cells(filter: Callable) -> Array[Vector2i]:
 	return cells
 
 
+func _spawn_sheep(cell: Vector2i) -> void:
+	var sheep: Sheep = sheep_scene.instantiate()
+	sheep.setup(_world)
+	_add_resource_node(sheep, cell)
+
+
 func _spawn_gold_ore(cell: Vector2i) -> void:
 	var ore: GoldOre = gold_scene.instantiate()
 	ore.data = GOLD_TYPES.pick_random()
@@ -246,12 +286,13 @@ func _spawn_gold_ore(cell: Vector2i) -> void:
 
 
 ## Espalha as árvores por células livres sorteadas, fora da clareira em volta da casa inicial
-## e sem encostar nos veios de ouro.
-func _spawn_trees(gold_cells: Array[Vector2i]) -> void:
+## sem encostar nos veios de ouro nem invadir os pastos.
+func _spawn_trees(gold_cells: Array[Vector2i], flock_centers: Array[Vector2i]) -> void:
 	var house := _world.get_center_cell()
 	var candidates := _free_cells(func(cell: Vector2i):
 		return Vector2(cell - house).length() >= START_CLEARING_RADIUS \
-				and not gold_cells.any(func(gold: Vector2i): return Vector2(cell - gold).length() <= GOLD_TREE_MARGIN))
+				and not gold_cells.any(func(gold: Vector2i): return Vector2(cell - gold).length() <= GOLD_TREE_MARGIN) \
+				and not flock_centers.any(func(flock: Vector2i): return Vector2(cell - flock).length() <= PASTURE_TREE_MARGIN))
 	candidates.shuffle()
 	for i in mini(TREE_COUNT, candidates.size()):
 		_spawn_tree(candidates[i])
@@ -263,19 +304,25 @@ func _spawn_tree(cell: Vector2i) -> void:
 	_add_resource_node(tree, cell)
 
 
-## Põe um recurso no mapa, ocupando a célula.
+## Põe um recurso no mapa, ocupando a célula (animais não bloqueiam o caminho).
 func _add_resource_node(source: Gatherable, cell: Vector2i) -> void:
 	source.cell = cell
 	# Base um pouco abaixo do centro da célula.
 	source.position = _world.cell_to_center(cell) + Vector2(0, 20)
 	source.removed.connect(_on_resource_removed)
-	_world.block_cell(cell)
+	if source.blocks_movement():
+		_world.block_cell(cell)
+	else:
+		_world.occupy_cell(cell)
 	_entities.add_child(source)
 
 
-## Recurso removido (toco arrancado, ouro esgotado): a célula volta a ficar livre.
+## Recurso removido (toco arrancado, ouro ou carne esgotados): a célula volta a ficar livre.
 func _on_resource_removed(source: Gatherable) -> void:
-	_world.unblock_cell(source.cell)
+	if source.blocks_movement():
+		_world.unblock_cell(source.cell)
+	else:
+		_world.release_cell(source.cell)
 
 
 ## Cada casa gera seus aldeões, parados em frente à porta (o lado depende da orientação).
