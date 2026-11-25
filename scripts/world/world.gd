@@ -74,42 +74,73 @@ func is_point_walkable(point: Vector2) -> bool:
 	return is_cell_free(world_to_cell(point))
 
 
+## Se o ponto estiver bloqueado, devolve o centro da célula livre mais próxima.
+func nearest_free_point(point: Vector2) -> Vector2:
+	var cell := world_to_cell(point)
+	if _is_walkable_cell(cell):
+		return point
+	return cell_to_center(_nearest_walkable_cell(cell))
+
+
 ## Caminho (centros de células) de `from_point` até a célula de `to_point`.
 ## Vazio se não houver caminho (ex.: destino bloqueado ou cercado).
 func find_path(from_point: Vector2, to_point: Vector2) -> PackedVector2Array:
-	var from_cell := world_to_cell(from_point)
-	var to_cell := world_to_cell(to_point)
-	if not _is_walkable_cell(from_cell) or not _is_walkable_cell(to_cell):
-		return PackedVector2Array()
-	return _ids_to_points(_astar.get_id_path(from_cell, to_cell))
+	return find_path_to_any(from_point, [world_to_cell(to_point)])
 
 
 ## Caminho de `from_point` até uma célula vizinha livre de `target_cell`.
 ## Serve para ir até algo que ocupa uma célula, como uma árvore. Vazio se não houver caminho.
 func find_path_to_adjacent(from_point: Vector2, target_cell: Vector2i) -> PackedVector2Array:
-	var from_cell := world_to_cell(from_point)
+	return find_path_to_any(from_point, [
+		target_cell + Vector2i.UP, target_cell + Vector2i.DOWN,
+		target_cell + Vector2i.LEFT, target_cell + Vector2i.RIGHT,
+	])
+
+
+## Menor caminho de `from_point` até qualquer uma das células `goals` que esteja livre.
+func find_path_to_any(from_point: Vector2, goals: Array[Vector2i]) -> PackedVector2Array:
+	var current_cell := world_to_cell(from_point)
+	# Quem está num lugar bloqueado (ex.: marcaram uma obra em cima) parte da célula livre ao lado.
+	var from_cell := current_cell if _is_walkable_cell(current_cell) else _nearest_walkable_cell(current_cell)
 	if not _is_walkable_cell(from_cell):
 		return PackedVector2Array()
 
 	var best: Array[Vector2i] = []
-	for direction in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
-		var neighbor: Vector2i = target_cell + direction
-		if not _is_walkable_cell(neighbor):
+	for goal in goals:
+		if not _is_walkable_cell(goal):
 			continue
-		var ids := _astar.get_id_path(from_cell, neighbor)
+		var ids := _astar.get_id_path(from_cell, goal)
 		if not ids.is_empty() and (best.is_empty() or ids.size() < best.size()):
 			best = ids
-	return _ids_to_points(best)
+	return _ids_to_points(best, current_cell)
 
 
 func _is_walkable_cell(cell: Vector2i) -> bool:
 	return _astar.is_in_boundsv(cell) and not _astar.is_point_solid(cell)
 
 
-func _ids_to_points(ids: Array[Vector2i]) -> PackedVector2Array:
+## Célula livre mais próxima, procurando em anéis cada vez maiores. Devolve a própria se não achar.
+func _nearest_walkable_cell(cell: Vector2i) -> Vector2i:
+	for radius in range(1, 4):
+		var best := cell
+		var best_distance := INF
+		for x in range(-radius, radius + 1):
+			for y in range(-radius, radius + 1):
+				var candidate := cell + Vector2i(x, y)
+				var distance := Vector2(x, y).length()
+				if _is_walkable_cell(candidate) and distance < best_distance:
+					best = candidate
+					best_distance = distance
+		if best != cell:
+			return best
+	return cell
+
+
+func _ids_to_points(ids: Array[Vector2i], current_cell: Vector2i) -> PackedVector2Array:
 	var points := PackedVector2Array()
-	# O primeiro ponto é a célula onde o aldeão já está; pula para ele não "voltar" ao centro dela.
-	for i in range(1 if ids.size() > 1 else 0, ids.size()):
+	# Se o caminho começa na célula onde o aldeão já está, pula para ele não "voltar" ao centro dela.
+	var skip_first := ids.size() > 1 and ids[0] == current_cell
+	for i in range(1 if skip_first else 0, ids.size()):
 		points.append(cell_to_center(ids[i]))
 	return points
 

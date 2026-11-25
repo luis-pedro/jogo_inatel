@@ -11,3 +11,5 @@ extends Resource
 @export var footprint := Vector2i(2, 2)
 ## Custo em recursos, ex.: {"wood": 20}.
 @export var cost: Dictionary = {}
+## Segundos de trabalho de um aldeão para erguer o prédio.
+@export var build_time := 8.0

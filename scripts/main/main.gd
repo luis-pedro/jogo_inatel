@@ -42,7 +42,7 @@ func _ready() -> void:
 	GameState.reset()
 	_axe_cursor = AXE_CURSOR_TEXTURE.get_image()
 	_axe_cursor.resize(AXE_CURSOR_SIZE, AXE_CURSOR_SIZE, Image.INTERPOLATE_NEAREST)
-	_build_manager.building_placed.connect(_on_building_placed)
+	_build_manager.building_completed.connect(_on_building_completed)
 	_camera.set_world_limits(_world.get_world_rect())
 
 	# Casa inicial no centro do mapa (a contagem dos 2 aldeões iniciais vem do GameState.reset()).
@@ -53,6 +53,7 @@ func _ready() -> void:
 	_camera.reset_smoothing()
 
 	_hud.build_requested.connect(_build_manager.start_placing)
+	_build_manager.placement_failed.connect(_hud.show_message)
 	_build_manager.placing_changed.connect(_hud.set_placing)
 	_build_manager.placing_changed.connect(func(is_placing: bool): _camera.left_drag_enabled = not is_placing)
 
@@ -144,23 +145,12 @@ func _assign_gatherer(tree: WoodTree) -> void:
 		_hud.show_message("Nenhum aldeão disponível.")
 		return
 
-	var best_pawn: Pawn
-	var best_path := PackedVector2Array()
-	for node in get_tree().get_nodes_in_group(PhysicsLayers.GROUP_UNITS):
-		var pawn := node as Pawn
-		if pawn == null or not pawn.is_available():
-			continue
-		var path := _world.find_path_to_adjacent(pawn.position, tree.cell)
-		if path.is_empty():
-			continue
-		if best_pawn == null or path.size() < best_path.size():
-			best_pawn = pawn
-			best_path = path
-
-	if best_pawn == null:
+	var task := Pawn.find_nearest_available(get_tree().get_nodes_in_group(PhysicsLayers.GROUP_UNITS),
+			func(pawn: Pawn): return _world.find_path_to_adjacent(pawn.position, tree.cell))
+	if task.is_empty():
 		_hud.show_message("Nenhum aldeão consegue chegar até a árvore.")
 		return
-	best_pawn.assign_gather(tree, best_path)
+	task.pawn.assign_gather(tree, task.path)
 
 
 ## Espalha as árvores por células livres sorteadas, fora da clareira em volta da casa inicial.
@@ -194,15 +184,16 @@ func _on_tree_removed(tree: WoodTree) -> void:
 
 
 ## Cada casa gera seus aldeões, parados em frente à porta (o lado depende da orientação).
-func _on_building_placed(building: Building) -> void:
+func _on_building_completed(building: Building) -> void:
 	var size := Vector2(building.data.footprint * World.TILE_SIZE)
 	var center := building.position + Vector2(size.x / 2.0, -size.y / 2.0)
 	var direction := Vector2(building.data.door_directions[building.variant])
 	# Ponto na borda da área ocupada, saindo da porta, mais uma folga.
-	var door := center + direction * (size / 2.0 + Vector2(36, 36))
+	# A porta pode dar numa árvore ou em outra casa: nesse caso usa o espaço livre mais próximo.
+	var door := _world.nearest_free_point(center + direction * (size / 2.0 + Vector2(36, 36)))
 	var along_wall := Vector2(-direction.y, direction.x)
 	for i in GameState.VILLAGERS_PER_HOUSE:
 		var pawn: Pawn = pawn_scene.instantiate()
-		pawn.position = door + along_wall * (i - 0.5) * 56
+		pawn.position = _world.nearest_free_point(door + along_wall * (i - 0.5) * 56)
 		pawn.setup(door, _world)
 		_entities.add_child(pawn)

@@ -1,10 +1,11 @@
 class_name Pawn
 extends Node2D
-## Aldeão. Sem tarefa, passeia pela vila (idle ⇄ andar). Com a tarefa de cortar uma árvore:
+## Aldeão. Sem tarefa, passeia pela vila (idle ⇄ andar). Pode erguer uma obra (vai até ela e
+## martela até ficar pronta). Com a tarefa de cortar uma árvore:
 ## vai até ela, corta até encher a mochila (ou a árvore acabar), leva a madeira até a porta da
 ## casa, entrega (só aí o estoque sobe) e volta para a árvore enquanto ainda houver madeira.
 
-enum State { IDLE, WALK, TO_TREE, WAIT_GROWTH, CHOP, UPROOT, TO_HOME }
+enum State { IDLE, WALK, TO_TREE, WAIT_GROWTH, CHOP, UPROOT, TO_HOME, TO_SITE, BUILD }
 ## O que o jogador mandou fazer: cortar a árvore ou arrancar o toco.
 enum Goal { CHOP, UPROOT }
 
@@ -13,6 +14,8 @@ const RUN_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run.png")
 const RUN_AXE_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run Axe.png")
 const RUN_WOOD_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run Wood.png")
 const CHOP_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Interact Axe.png")
+const RUN_HAMMER_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run Hammer.png")
+const BUILD_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Interact Hammer.png")
 const FRAME_SIZE := Vector2i(192, 192)
 ## Altura (em px, a partir do topo do frame) onde ficam os pés do personagem.
 const FEET_Y := 127
@@ -40,6 +43,7 @@ var _home := Vector2.ZERO
 var _world: World
 
 var _tree: WoodTree
+var _site: Building
 var _goal := Goal.CHOP
 var _uproot_swings := 0
 var _path := PackedVector2Array()
@@ -84,6 +88,28 @@ func assign_gather(tree: WoodTree, path: PackedVector2Array) -> void:
 	_begin_path(State.TO_TREE, path, "run_axe")
 
 
+## Aldeão disponível com o menor caminho, calculado por `path_for(pawn)`. Vazio se nenhum chega;
+## senão {"pawn": Pawn, "path": PackedVector2Array}.
+static func find_nearest_available(units: Array[Node], path_for: Callable) -> Dictionary:
+	var best := {}
+	for unit in units:
+		var pawn := unit as Pawn
+		if pawn == null or not pawn.is_available():
+			continue
+		var path: PackedVector2Array = path_for.call(pawn)
+		if not path.is_empty() and (best.is_empty() or path.size() < best.path.size()):
+			best = {"pawn": pawn, "path": path}
+	return best
+
+
+## Manda o aldeão erguer a obra `site`, andando por `path` até o lado dela.
+func assign_build(site: Building, path: PackedVector2Array) -> void:
+	if not is_available() or not GameState.reserve_villager():
+		return
+	_site = site
+	_begin_path(State.TO_SITE, path, "run_hammer")
+
+
 func _physics_process(delta: float) -> void:
 	match _state:
 		State.IDLE:
@@ -93,8 +119,12 @@ func _physics_process(delta: float) -> void:
 		State.WALK:
 			if _step_towards(_target, delta, WALK_SPEED):
 				_start_idle()
-		State.TO_TREE, State.TO_HOME:
+		State.TO_TREE, State.TO_HOME, State.TO_SITE:
 			_follow_path(delta)
+		State.BUILD:
+			_site.advance_construction(delta)
+			if not _site.under_construction:
+				_finish_building()
 
 
 func _begin_path(state: State, path: PackedVector2Array, animation: String) -> void:
@@ -117,10 +147,26 @@ func _follow_path(delta: float) -> void:
 
 
 func _on_path_finished() -> void:
-	if _state == State.TO_TREE:
-		_arrive_at_tree()
-	else:
-		_deliver_wood()
+	match _state:
+		State.TO_TREE:
+			_arrive_at_tree()
+		State.TO_SITE:
+			_arrive_at_site()
+		State.TO_HOME:
+			_deliver_wood()
+
+
+func _arrive_at_site() -> void:
+	_state = State.BUILD
+	var site_center_x := _site.position.x + _site.data.footprint.x * World.TILE_SIZE / 2.0
+	_sprite.flip_h = site_center_x < position.x
+	_sprite.play("build")
+
+
+func _finish_building() -> void:
+	_site = null
+	GameState.release_villager()
+	_start_idle()
 
 
 func _arrive_at_tree() -> void:
@@ -255,4 +301,6 @@ func _build_frames() -> SpriteFrames:
 	SpriteSheets.add_animation(frames, "run_axe", RUN_AXE_TEXTURE, FRAME_SIZE, 10.0)
 	SpriteSheets.add_animation(frames, "run_wood", RUN_WOOD_TEXTURE, FRAME_SIZE, 10.0)
 	SpriteSheets.add_animation(frames, "chop", CHOP_TEXTURE, FRAME_SIZE, 10.0)
+	SpriteSheets.add_animation(frames, "run_hammer", RUN_HAMMER_TEXTURE, FRAME_SIZE, 10.0)
+	SpriteSheets.add_animation(frames, "build", BUILD_TEXTURE, FRAME_SIZE, 6.0)
 	return frames
