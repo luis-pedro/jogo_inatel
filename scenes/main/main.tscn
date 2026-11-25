@@ -9,12 +9,14 @@
 [ext_resource type="Texture2D" uid="uid://bx44e53py7lj0" path="res://assets/Terrain/Tileset/Water Background color.png" id="7"]
 [ext_resource type="PackedScene" path="res://scenes/units/pawn.tscn" id="8"]
 [ext_resource type="PackedScene" path="res://scenes/resources/wood_tree.tscn" id="9"]
+[ext_resource type="PackedScene" path="res://scenes/resources/gold_ore.tscn" id="10"]
 
 [node name="Main" type="Node2D" unique_id=1638811561]
 script = ExtResource("1")
 house_data = ExtResource("6")
 pawn_scene = ExtResource("8")
 tree_scene = ExtResource("9")
+gold_scene = ExtResource("10")
 
 [node name="Water" type="Sprite2D" parent="." unique_id=1799899241]
 z_index = -10

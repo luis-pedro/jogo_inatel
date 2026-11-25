@@ -89,12 +89,18 @@ func find_path(from_point: Vector2, to_point: Vector2) -> PackedVector2Array:
 
 
 ## Caminho de `from_point` até uma célula vizinha livre de `target_cell`.
-## Serve para ir até algo que ocupa uma célula, como uma árvore. Vazio se não houver caminho.
+## Serve para ir até algo que ocupa uma célula, como uma árvore. Prefere os lados (onde o golpe
+## aparece melhor), depois a frente (o aldeão cobre o alvo) e por último atrás (o alvo cobre o
+## aldeão). Vazio se não houver caminho.
 func find_path_to_adjacent(from_point: Vector2, target_cell: Vector2i) -> PackedVector2Array:
-	return find_path_to_any(from_point, [
-		target_cell + Vector2i.UP, target_cell + Vector2i.DOWN,
-		target_cell + Vector2i.LEFT, target_cell + Vector2i.RIGHT,
-	])
+	for sides: Array in [[Vector2i.LEFT, Vector2i.RIGHT], [Vector2i.DOWN], [Vector2i.UP]]:
+		var goals: Array[Vector2i] = []
+		for side in sides:
+			goals.append(target_cell + (side as Vector2i))
+		var path := find_path_to_any(from_point, goals)
+		if not path.is_empty():
+			return path
+	return PackedVector2Array()
 
 
 ## Menor caminho de `from_point` até qualquer uma das células `goals` que esteja livre.
