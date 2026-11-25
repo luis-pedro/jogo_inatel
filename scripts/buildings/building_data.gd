@@ -13,3 +13,5 @@ extends Resource
 @export var cost: Dictionary = {}
 ## Segundos de trabalho de um aldeão para erguer o prédio.
 @export var build_time := 8.0
+## Canteiro mostrado no terreno antes de o aldeão chegar (esticado para a área ocupada).
+@export var construction_site_texture: Texture2D

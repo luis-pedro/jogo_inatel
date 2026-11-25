@@ -13,7 +13,7 @@
 
 - `assets/` — arte e áudio. Não renomear os arquivos do Tiny Swords (facilita atualizar o pack).
 - `assets/custom/` — arte feita pela equipe (ex.: canteiro de obras).
-- `tools/` — scripts auxiliares fora do jogo (ex.: `make_construction_site.py` gera o sprite do canteiro).
+- `tools/` — scripts auxiliares fora do jogo (ex.: `make_construction_site.py` gera `house_construction_site.png`, o canteiro da casa).
 - `scenes/<funcionalidade>/` — cada cena junto do que for exclusivo dela. Ex.: `scenes/buildings/house/house.tscn`.
 - `scripts/` — scripts compartilhados ou que não pertencem a uma cena específica.
 - `scripts/autoload/` — singletons globais.
@@ -33,7 +33,7 @@ Scripts ligados a uma única cena podem ficar na mesma pasta da cena (`house.tsc
 | Sprites | `scripts/core/sprite_sheets.gd` | `SpriteSheets.add_animation()` fatia faixas horizontais de frames em `SpriteFrames`. |
 | Interface | `scripts/ui/hud.gd` | Recursos, população e botão de construir. |
 
-Para adicionar um prédio novo: duplique `data/buildings/house.tres`, troque `textures` (uma por orientação), `door_directions`, `footprint` e `cost`.
+Para adicionar um prédio novo: duplique `data/buildings/house.tres`, troque `display_name` (aparece na placa da obra), `textures` (uma por orientação), `door_directions`, `footprint`, `cost`, `build_time` e `construction_site_texture` (o canteiro; pode reaproveitar o da casa).
 
 ## Camadas
 

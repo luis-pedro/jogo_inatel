@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://pvd2ewiakixq"
-path="res://.godot/imported/construction_site.png-63c2d18e29c6d5979a9564a30f2ab29e.ctex"
+uid="uid://bxa2k785nl86a"
+path="res://.godot/imported/house_construction_site.png-939e236a482b0b3cd19c1e9cc506faeb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/custom/construction_site.png"
-dest_files=["res://.godot/imported/construction_site.png-63c2d18e29c6d5979a9564a30f2ab29e.ctex"]
+source_file="res://assets/custom/house_construction_site.png"
+dest_files=["res://.godot/imported/house_construction_site.png-939e236a482b0b3cd19c1e9cc506faeb.ctex"]
 
 [params]
 

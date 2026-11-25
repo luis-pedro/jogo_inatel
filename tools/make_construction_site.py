@@ -1,4 +1,4 @@
-"""Gera assets/custom/construction_site.png: o canteiro de obras (2x2 tiles, 128x128 px).
+"""Gera assets/custom/house_construction_site.png: o canteiro de obras da casa (2x2 tiles, 128x128 px).
 
 Arte própria da equipe, desenhada por código para combinar com o Tiny Swords (contorno escuro).
 Uso, na raiz do projeto: python tools/make_construction_site.py
@@ -9,7 +9,7 @@ import struct
 import zlib
 
 SIZE = 128
-OUTPUT = "assets/custom/construction_site.png"
+OUTPUT = "assets/custom/house_construction_site.png"
 
 CLEAR = (0, 0, 0, 0)
 OUTLINE = (34, 32, 52, 255)

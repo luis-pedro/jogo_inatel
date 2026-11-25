@@ -2,8 +2,8 @@ class_name Building
 extends Node2D
 ## Construção posta no mapa. A origem do nó é o canto inferior esquerdo da área ocupada
 ## no chão, para o y_sort ordenar os prédios pela base.
-## Em obra, mostra um canteiro com a madeira até um aldeão chegar; depois é erguida de baixo
-## para cima enquanto ele chama `advance_construction()`.
+## Em obra, mostra o canteiro com uma placa do nome até um aldeão chegar; depois é erguida de
+## baixo para cima enquanto ele chama `advance_construction()`.
 
 signal construction_finished(building: Building)
 
@@ -14,11 +14,10 @@ const DUST_SCALE := 3.0
 ## Altura do centro da nuvem, como fração da altura do sprite do prédio (a partir da base).
 const DUST_CENTER_HEIGHT := 0.52
 const BAR_SIZE := Vector2(90, 12)
-## Canteiro desenhado para uma área de 128x128 px (2x2 tiles); é esticado para outros tamanhos.
-const SITE_TEXTURE := preload("res://assets/custom/construction_site.png")
-const MATERIAL_TEXTURE := preload("res://assets/Terrain/Resources/Wood/Wood Resource/Wood Resource.png")
-## Posição de cada tora no canteiro, como fração da área ocupada (0,0 = canto superior esquerdo).
-const MATERIAL_SPOTS: Array[Vector2] = [Vector2(0.36, 0.7), Vector2(0.66, 0.68), Vector2(0.5, 0.54)]
+const SIGN_FONT_SIZE := 18
+const SIGN_WOOD_COLOR := Color("96623f")
+const SIGN_OUTLINE_COLOR := Color("222034")
+const SIGN_TEXT_COLOR := Color("f6e7c1")
 
 var data: BuildingData
 var cell: Vector2i
@@ -29,9 +28,9 @@ var under_construction := false
 var progress := 0.0
 
 var _tile_size := 64
-## Nós que só existem durante a obra (canteiro, madeira, parte já erguida, poeira e barra).
+## Nós que só existem durante a obra (canteiro, placa, parte já erguida, poeira e barra).
 var _site_ground: Sprite2D
-var _material: Node2D
+var _sign: Label
 var _reveal: Sprite2D
 var _bar: ProgressBar
 var _dust: AnimatedSprite2D
@@ -56,7 +55,7 @@ func _ready() -> void:
 
 
 ## Transforma o prédio em obra. Chamar depois de ele entrar na árvore da cena.
-## Até o primeiro `advance_construction()` (o aldeão chegar) só aparecem o canteiro e a madeira.
+## Até o primeiro `advance_construction()` (o aldeão chegar) só aparecem o canteiro e a placa.
 func start_construction() -> void:
 	under_construction = true
 	progress = 0.0
@@ -69,8 +68,8 @@ func advance_construction(delta: float) -> void:
 	if not under_construction:
 		return
 	if _reveal == null:
-		# O aldeão chegou: pega a madeira do canteiro e começa a erguer a casa.
-		_material.queue_free()
+		# O aldeão chegou: tira a placa e começa a erguer o prédio.
+		_sign.queue_free()
 		_create_construction_visuals()
 	progress = minf(progress + delta / data.build_time, 1.0)
 	_update_construction_visual()
@@ -78,24 +77,43 @@ func advance_construction(delta: float) -> void:
 		_finish_construction()
 
 
-## Chão marcado com estacas e a madeira que o aldeão vai usar.
+## Chão marcado com estacas e uma placa dizendo o que vai ser construído ali.
 func _create_construction_site() -> void:
 	var area := Vector2(data.footprint * _tile_size)
 
 	_site_ground = Sprite2D.new()
-	_site_ground.texture = SITE_TEXTURE
+	_site_ground.texture = data.construction_site_texture
 	_site_ground.centered = false
 	_site_ground.position = Vector2(0, -area.y)
-	_site_ground.scale = area / SITE_TEXTURE.get_size()
+	if data.construction_site_texture != null:
+		_site_ground.scale = area / data.construction_site_texture.get_size()
 	add_child(_site_ground)
 
-	_material = Node2D.new()
-	add_child(_material)
-	for spot in MATERIAL_SPOTS:
-		var log_sprite := Sprite2D.new()
-		log_sprite.texture = MATERIAL_TEXTURE
-		log_sprite.position = Vector2(area.x * spot.x, area.y * (spot.y - 1.0))
-		_material.add_child(log_sprite)
+	_sign = _create_sign(data.display_name)
+	add_child(_sign)
+	# Centralizada no canteiro (o tamanho só é conhecido depois de entrar na árvore).
+	_sign.reset_size()
+	_sign.position = (Vector2(area.x, -area.y) / 2.0 - _sign.size / 2.0).round()
+
+
+## Plaquinha de madeira com o nome da construção.
+func _create_sign(text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", SIGN_FONT_SIZE)
+	label.add_theme_color_override("font_color", SIGN_TEXT_COLOR)
+	var board := StyleBoxFlat.new()
+	board.bg_color = SIGN_WOOD_COLOR
+	board.border_color = SIGN_OUTLINE_COLOR
+	board.set_border_width_all(3)
+	board.set_corner_radius_all(3)
+	board.content_margin_left = 12
+	board.content_margin_right = 12
+	board.content_margin_top = 3
+	board.content_margin_bottom = 3
+	label.add_theme_stylebox_override("normal", board)
+	return label
 
 
 ## Parte já erguida, poeira e barra de progresso.
