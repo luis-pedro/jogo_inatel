@@ -4,7 +4,9 @@ extends Node2D
 ## vai até ela, corta até encher a mochila (ou a árvore acabar), leva a madeira até a porta da
 ## casa, entrega (só aí o estoque sobe) e volta para a árvore enquanto ainda houver madeira.
 
-enum State { IDLE, WALK, TO_TREE, CHOP, TO_HOME }
+enum State { IDLE, WALK, TO_TREE, WAIT_GROWTH, CHOP, UPROOT, TO_HOME }
+## O que o jogador mandou fazer: cortar a árvore ou arrancar o toco.
+enum Goal { CHOP, UPROOT }
 
 const IDLE_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Idle.png")
 const RUN_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run.png")
@@ -27,6 +29,8 @@ const WOOD_PER_CHOP := 2
 ## Quanta madeira cabe na mochila antes de ter que levar para casa. Com 13, uma árvore grande
 ## (14 a 25 de madeira) dá 2 viagens e uma pequena (5 a 12) dá 1.
 const BACKPACK_CAPACITY := 13
+## Machadadas (ciclos da animação) para arrancar um toco.
+const UPROOT_SWINGS := 3
 
 var _state := State.IDLE
 var _timer := 0.0
@@ -36,6 +40,8 @@ var _home := Vector2.ZERO
 var _world: World
 
 var _tree: WoodTree
+var _goal := Goal.CHOP
+var _uproot_swings := 0
 var _path := PackedVector2Array()
 var _path_index := 0
 var _carried_wood := 0
@@ -67,12 +73,14 @@ func is_available() -> bool:
 	return _state == State.IDLE or _state == State.WALK
 
 
-## Manda o aldeão cortar `tree` seguindo `path` (pontos do mundo). Reserva ele em GameState.
+## Manda o aldeão trabalhar em `tree` seguindo `path` (pontos do mundo): cortar, se for árvore,
+## ou arrancar, se for toco. Reserva ele em GameState e reserva a árvore (que para de crescer).
 func assign_gather(tree: WoodTree, path: PackedVector2Array) -> void:
 	if not is_available() or not GameState.reserve_villager():
 		return
 	_tree = tree
-	_tree.worker = self  # a árvore fica reservada durante todas as viagens
+	_goal = Goal.UPROOT if tree.is_stump() else Goal.CHOP
+	_tree.worker = self  # reservada durante todas as viagens; um toco reservado não cresce
 	_begin_path(State.TO_TREE, path, "run_axe")
 
 
@@ -116,21 +124,43 @@ func _on_path_finished() -> void:
 
 
 func _arrive_at_tree() -> void:
-	if _tree.is_depleted():
-		_finish_task()
-		return
-	_state = State.CHOP
 	_sprite.flip_h = _tree.position.x < position.x
-	_sprite.play("chop")
+	if _tree.stage == WoodTree.Stage.SAPLING:
+		# A muda ainda está crescendo: espera ela ficar adulta e só então decide o que fazer.
+		_state = State.WAIT_GROWTH
+		_sprite.play("idle")
+		_tree.regrown.connect(_arrive_at_tree, CONNECT_ONE_SHOT)
+	elif _tree.is_grown():
+		# Árvore adulta: corta primeiro, mesmo que a ordem tenha sido para o toco. Com a pausa do
+		# crescimento isso não deveria acontecer, mas assim o aldeão nunca fica "perdido".
+		_state = State.CHOP
+		_sprite.play("chop")
+	elif _goal == Goal.UPROOT and _tree.is_stump():
+		_state = State.UPROOT
+		_uproot_swings = 0
+		_sprite.play("chop")
+	else:
+		_finish_task()
 
 
 ## Chamado a cada ciclo completo de uma animação em loop; no corte, cada ciclo é uma machadada.
 func _on_animation_looped() -> void:
-	if _state != State.CHOP:
-		return
-	_carried_wood += _tree.take_wood(mini(WOOD_PER_CHOP, BACKPACK_CAPACITY - _carried_wood))
-	if _carried_wood >= BACKPACK_CAPACITY or _tree.is_depleted():
-		_go_home()
+	match _state:
+		State.CHOP:
+			_carried_wood += _tree.take_wood(mini(WOOD_PER_CHOP, BACKPACK_CAPACITY - _carried_wood))
+			if _carried_wood >= BACKPACK_CAPACITY or _tree.is_depleted():
+				_go_home()
+		State.UPROOT:
+			_uproot_swings += 1
+			if _uproot_swings >= UPROOT_SWINGS:
+				_finish_uproot()
+
+
+func _finish_uproot() -> void:
+	_carried_wood += _tree.uproot()
+	# A árvore sai do jogo no fim do frame: daqui em diante a referência não pode mais ser usada.
+	_tree = null
+	_go_home()
 
 
 func _go_home() -> void:
@@ -147,8 +177,8 @@ func _deliver_wood() -> void:
 	if _carried_wood > 0:
 		GameState.add_resource("wood", _carried_wood)
 		_carried_wood = 0
-	# Volta para a árvore se ainda tem madeira e o caminho continua existindo.
-	if not _tree.is_depleted():
+	# Volta para a árvore se ainda há trabalho nela e o caminho continua existindo.
+	if _should_return_to_tree():
 		var path := _world.find_path_to_adjacent(position, _tree.cell)
 		if not path.is_empty():
 			_begin_path(State.TO_TREE, path, "run_axe")
@@ -156,9 +186,18 @@ func _deliver_wood() -> void:
 	_finish_task()
 
 
+## Ainda há o que fazer na árvore: madeira para cortar ou, se a ordem era arrancar, um toco.
+func _should_return_to_tree() -> bool:
+	if _tree == null or not is_instance_valid(_tree):
+		return false
+	return _tree.is_grown() or (_goal == Goal.UPROOT and _tree.is_stump())
+
+
 func _finish_task() -> void:
-	_tree.worker = null
+	if _tree != null and is_instance_valid(_tree):
+		_tree.worker = null  # libera a árvore (e o toco volta a contar o crescimento)
 	_tree = null
+	_goal = Goal.CHOP
 	GameState.release_villager()
 	_start_idle()
 

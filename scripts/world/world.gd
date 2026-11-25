@@ -54,6 +54,13 @@ func block_cell(cell: Vector2i) -> void:
 		_astar.set_point_solid(cell, true)
 
 
+## Desfaz o `block_cell` (ex.: uma árvore foi arrancada): volta a poder construir e andar na célula.
+func unblock_cell(cell: Vector2i) -> void:
+	_blocked.erase(cell)
+	if _astar.is_in_boundsv(cell) and is_buildable(cell):
+		_astar.set_point_solid(cell, false)
+
+
 func is_blocked(cell: Vector2i) -> bool:
 	return _blocked.has(cell)
 

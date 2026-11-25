@@ -17,13 +17,10 @@ const TREE_TYPES := [
 	preload("res://data/trees/tree4.tres"),
 ]
 
-## Árvores do cenário de teste (células do mapa).
-const TEST_TREE_CELLS: Array[Vector2i] = [
-	Vector2i(24, 4), Vector2i(26, 6), Vector2i(28, 5), Vector2i(27, 8), Vector2i(30, 7),
-	Vector2i(29, 10), Vector2i(32, 9), Vector2i(31, 12), Vector2i(25, 11),
-	Vector2i(7, 15), Vector2i(9, 17), Vector2i(6, 18), Vector2i(11, 19),
-	Vector2i(8, 13), Vector2i(12, 16), Vector2i(34, 15), Vector2i(33, 18),
-]
+## Quantas árvores nascem no mapa e quão longe da casa inicial (em células) fica a clareira
+## onde não nasce nenhuma, para o começo não ficar apertado.
+const TREE_COUNT := 50
+const START_CLEARING_RADIUS := 6.0
 
 @export var house_data: BuildingData
 @export var pawn_scene: PackedScene
@@ -51,7 +48,7 @@ func _ready() -> void:
 	# Casa inicial no centro do mapa (a contagem dos 2 aldeões iniciais vem do GameState.reset()).
 	var start_cell := _world.get_center_cell() - house_data.footprint / 2
 	_build_manager.place(house_data, start_cell)
-	_spawn_test_trees()
+	_spawn_trees()
 	_camera.position = _world.cell_to_world(_world.get_center_cell())
 	_camera.reset_smoothing()
 
@@ -84,7 +81,7 @@ func _update_cursor() -> void:
 	# Não mostra o machado durante a construção nem quando o mouse está sobre a interface.
 	if not _build_manager.is_placing() and get_viewport().gui_get_hovered_control() == null:
 		var tree := _find_tree_at(get_global_mouse_position())
-		over_choppable = tree != null and tree.worker == null
+		over_choppable = tree != null and tree.can_be_targeted() and tree.worker == null
 	if over_choppable == _axe_cursor_active:
 		return
 	_axe_cursor_active = over_choppable
@@ -118,7 +115,7 @@ func _handle_left_click(event: InputEventMouseButton) -> void:
 
 func _on_world_clicked(world_point: Vector2) -> void:
 	var tree := _find_tree_at(world_point)
-	if tree != null:
+	if tree != null and tree.can_be_targeted():
 		_assign_gatherer(tree)
 
 
@@ -130,13 +127,18 @@ func _find_tree_at(world_point: Vector2) -> WoodTree:
 	query.collide_with_areas = true
 	query.collide_with_bodies = false
 	var hits := get_world_2d().direct_space_state.intersect_point(query, 1)
-	return hits[0].collider as WoodTree if not hits.is_empty() else null
+	if hits.is_empty():
+		return null
+	var tree := hits[0].collider as WoodTree
+	# Uma árvore arrancada ainda existe até o fim do frame; não conta como alvo.
+	return tree if tree != null and not tree.is_queued_for_deletion() else null
 
 
-## Escolhe o aldeão disponível com o caminho mais curto até a árvore e manda cortar.
+## Escolhe o aldeão disponível com o caminho mais curto até a árvore e manda trabalhar nela:
+## cortar, se for árvore adulta, ou arrancar, se for toco.
 func _assign_gatherer(tree: WoodTree) -> void:
 	if tree.worker != null:
-		_hud.show_message("Essa árvore já está sendo cortada.")
+		_hud.show_message("Já tem um aldeão trabalhando nessa árvore.")
 		return
 	if GameState.available_villagers() <= 0:
 		_hud.show_message("Nenhum aldeão disponível.")
@@ -161,15 +163,34 @@ func _assign_gatherer(tree: WoodTree) -> void:
 	best_pawn.assign_gather(tree, best_path)
 
 
-func _spawn_test_trees() -> void:
-	for cell in TEST_TREE_CELLS:
-		var tree: WoodTree = tree_scene.instantiate()
-		tree.cell = cell
-		tree.data = TREE_TYPES.pick_random()
-		# Base do tronco um pouco abaixo do centro da célula.
-		tree.position = _world.cell_to_center(cell) + Vector2(0, 20)
-		_world.block_cell(cell)
-		_entities.add_child(tree)
+## Espalha as árvores por células livres sorteadas, fora da clareira em volta da casa inicial.
+func _spawn_trees() -> void:
+	var center := _world.get_center_cell()
+	var candidates: Array[Vector2i] = []
+	for x in World.MAP_SIZE.x:
+		for y in World.MAP_SIZE.y:
+			var cell := Vector2i(x, y)
+			if _world.is_cell_free(cell) and Vector2(cell - center).length() >= START_CLEARING_RADIUS:
+				candidates.append(cell)
+	candidates.shuffle()
+	for i in mini(TREE_COUNT, candidates.size()):
+		_spawn_tree(candidates[i])
+
+
+func _spawn_tree(cell: Vector2i) -> void:
+	var tree: WoodTree = tree_scene.instantiate()
+	tree.cell = cell
+	tree.data = TREE_TYPES.pick_random()
+	# Base do tronco um pouco abaixo do centro da célula.
+	tree.position = _world.cell_to_center(cell) + Vector2(0, 20)
+	tree.removed.connect(_on_tree_removed)
+	_world.block_cell(cell)
+	_entities.add_child(tree)
+
+
+## Árvore arrancada: a célula volta a ficar livre para construir e andar.
+func _on_tree_removed(tree: WoodTree) -> void:
+	_world.unblock_cell(tree.cell)
 
 
 ## Cada casa gera seus aldeões, parados em frente à porta (o lado depende da orientação).

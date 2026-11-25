@@ -20,5 +20,9 @@ extends Resource
 ## Árvores grandes demoram mais que as pequenas.
 @export var regrow_time_min := 45.0
 @export var regrow_time_max := 90.0
-## Área clicável (px), com a base alinhada aos pés da árvore.
+## Madeira que o toco dá ao ser arrancado (sorteio entre estes valores). Bem menos que a árvore.
+@export var stump_wood_min := 2
+@export var stump_wood_max := 5
+## Área clicável (px) da árvore e do toco, com a base alinhada aos pés.
 @export var click_size := Vector2(100, 170)
+@export var stump_click_size := Vector2(60, 50)
