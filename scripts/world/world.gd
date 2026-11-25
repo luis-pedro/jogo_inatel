@@ -82,19 +82,29 @@ func nearest_free_point(point: Vector2) -> Vector2:
 	return cell_to_center(_nearest_walkable_cell(cell))
 
 
-## Caminho (centros de células) de `from_point` até a célula de `to_point`.
+## Caminho de `from_point` até exatamente `to_point`, passando pelos centros das células.
 ## Vazio se não houver caminho (ex.: destino bloqueado ou cercado).
 func find_path(from_point: Vector2, to_point: Vector2) -> PackedVector2Array:
-	return find_path_to_any(from_point, [world_to_cell(to_point)])
+	var path := find_path_to_any(from_point, [world_to_cell(to_point)])
+	if not path.is_empty():
+		# O último passo vai ao ponto em si, e não ao centro da célula onde ele está.
+		path[path.size() - 1] = to_point
+	return path
 
 
 ## Caminho de `from_point` até uma célula vizinha livre de `target_cell`.
-## Serve para ir até algo que ocupa uma célula, como uma árvore. Vazio se não houver caminho.
+## Serve para ir até algo que ocupa uma célula, como uma árvore. Prefere os lados (onde o golpe
+## aparece melhor), depois a frente (o aldeão cobre o alvo) e por último atrás (o alvo cobre o
+## aldeão). Vazio se não houver caminho.
 func find_path_to_adjacent(from_point: Vector2, target_cell: Vector2i) -> PackedVector2Array:
-	return find_path_to_any(from_point, [
-		target_cell + Vector2i.UP, target_cell + Vector2i.DOWN,
-		target_cell + Vector2i.LEFT, target_cell + Vector2i.RIGHT,
-	])
+	for sides: Array in [[Vector2i.LEFT, Vector2i.RIGHT], [Vector2i.DOWN], [Vector2i.UP]]:
+		var goals: Array[Vector2i] = []
+		for side in sides:
+			goals.append(target_cell + (side as Vector2i))
+		var path := find_path_to_any(from_point, goals)
+		if not path.is_empty():
+			return path
+	return PackedVector2Array()
 
 
 ## Menor caminho de `from_point` até qualquer uma das células `goals` que esteja livre.

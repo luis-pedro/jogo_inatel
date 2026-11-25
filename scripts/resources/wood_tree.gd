@@ -1,16 +1,14 @@
 class_name WoodTree
-extends Area2D
+extends Gatherable
 ## Árvore que os aldeões cortam para ganhar madeira. Ciclo de vida:
 ##   GROWN (árvore) --corte--> STUMP (toco) --tempo--> SAPLING (muda crescendo) --> GROWN
 ## Um aldeão também pode arrancar o toco (`uproot`): a árvore some do jogo de vez e libera a célula.
-## É uma Area2D na camada `collectibles` só para o clique do jogador achá-la.
+## Um aldeão reservado (`worker`) PAUSA a contagem para o toco voltar a crescer.
 
 ## Terminou a madeira e virou toco.
 signal depleted
 ## Voltou a ser árvore.
 signal regrown
-## Foi arrancada e vai ser removida da cena; quem bloqueou a célula deve liberá-la.
-signal removed(tree: WoodTree)
 
 enum Stage { GROWN, STUMP, SAPLING, REMOVED }
 
@@ -27,26 +25,21 @@ const SAPLING_SCALE := 0.3
 ## Madeira que ainda resta na árvore (sorteada em `roll_wood_amount()`).
 var wood := 0
 var stage := Stage.GROWN
-## Célula do mapa que a árvore ocupa.
-var cell: Vector2i
-## Aldeão que reservou esta árvore/toco (só um por vez). Tipado como Node2D de propósito:
-## usar `Pawn` aqui criaria uma dependência circular com pawn.gd, que usa `WoodTree`.
-## Enquanto houver um aldeão reservado, a contagem para o toco voltar a crescer fica PAUSADA.
-var worker: Node2D
 
 var _regrow_left := 0.0
-var _click_shape := RectangleShape2D.new()
 
 @onready var _sprite: AnimatedSprite2D = $AnimatedSprite2D
-@onready var _collision: CollisionShape2D = $CollisionShape2D
+
+
+func _init() -> void:
+	resource_type = "wood"
 
 
 func _ready() -> void:
+	super()
 	if data == null:
 		data = DEFAULT_DATA
 	wood = roll_wood_amount()
-	collision_mask = 0
-	_set_targetable(true)
 	# Só o toco precisa do _process (contagem de crescimento); as árvores adultas não gastam nada.
 	set_process(false)
 
@@ -55,8 +48,6 @@ func _ready() -> void:
 	SpriteSheets.add_animation(frames, "sway", data.tree_texture, data.tree_frame_size, SWAY_FPS)
 	SpriteSheets.add_animation(frames, "stump", data.stump_texture, data.stump_frame_size, 1.0)
 	_sprite.sprite_frames = frames
-	# Cada instância precisa do seu próprio shape: o da cena é compartilhado entre todas as árvores.
-	_collision.shape = _click_shape
 	_show_tree()
 
 
@@ -87,8 +78,12 @@ func can_be_targeted() -> bool:
 	return stage == Stage.GROWN or stage == Stage.STUMP
 
 
+func can_harvest() -> bool:
+	return is_grown()
+
+
 ## Retira até `amount` de madeira e devolve quanto foi retirado.
-func take_wood(amount: int) -> int:
+func harvest(amount: int) -> int:
 	var taken := mini(amount, wood)
 	wood -= taken
 	if is_depleted() and stage == Stage.GROWN:
@@ -103,11 +98,7 @@ func uproot() -> int:
 		return 0
 	stage = Stage.REMOVED
 	set_process(false)
-	_set_targetable(false)
-	removed.emit(self)
-	# queue_free (e não free): a remoção acontece no fim do frame, com segurança dentro de sinais.
-	# Ao sair da cena, o nó leva junto sprite, colisão, grupo e tween (nada fica rodando).
-	queue_free()
+	_remove_from_map()
 	return randi_range(data.stump_wood_min, data.stump_wood_max)
 
 
@@ -167,19 +158,3 @@ func _show_stump() -> void:
 	_sprite.offset = Vector2(0, data.stump_frame_size.y / 2.0 - data.stump_feet_y)
 	_sprite.play("stump")
 	_set_click_size(data.stump_click_size)
-
-
-## Base da área clicável nos pés da árvore.
-func _set_click_size(size: Vector2) -> void:
-	_click_shape.size = size
-	_collision.position = Vector2(0, -size.y / 2.0)
-
-
-## Liga/desliga como alvo de ordens: grupo `collectibles` (busca) e camada de física (clique).
-func _set_targetable(targetable: bool) -> void:
-	if targetable:
-		add_to_group(PhysicsLayers.GROUP_COLLECTIBLES)
-	else:
-		remove_from_group(PhysicsLayers.GROUP_COLLECTIBLES)
-	# set_deferred: evita mudar o estado da física no meio de um callback.
-	set_deferred("collision_layer", PhysicsLayers.COLLECTIBLES if targetable else 0)

@@ -1,13 +1,13 @@
 class_name Pawn
 extends Node2D
 ## Aldeão. Sem tarefa, passeia pela vila (idle ⇄ andar). Pode erguer uma obra (vai até ela e
-## martela até ficar pronta). Com a tarefa de cortar uma árvore:
-## vai até ela, corta até encher a mochila (ou a árvore acabar), leva a madeira até a porta da
-## casa, entrega (só aí o estoque sobe) e volta para a árvore enquanto ainda houver madeira.
+## martela até ficar pronta). Com a tarefa de coletar (árvore ou ouro):
+## vai até o recurso, trabalha até encher a mochila (ou ele acabar), leva a carga até a porta da
+## casa, entrega (só aí o estoque sobe) e volta enquanto ainda houver o que coletar.
 
-enum State { IDLE, WALK, TO_TREE, WAIT_GROWTH, CHOP, UPROOT, TO_HOME, TO_SITE, BUILD }
-## O que o jogador mandou fazer: cortar a árvore ou arrancar o toco.
-enum Goal { CHOP, UPROOT }
+enum State { IDLE, WALK, TO_SOURCE, WAIT_GROWTH, GATHER, UPROOT, TO_HOME, TO_SITE, BUILD }
+## O que o jogador mandou fazer: coletar o recurso ou arrancar um toco.
+enum Goal { GATHER, UPROOT }
 
 const IDLE_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Idle.png")
 const RUN_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run.png")
@@ -16,6 +16,9 @@ const RUN_WOOD_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run W
 const CHOP_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Interact Axe.png")
 const RUN_HAMMER_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run Hammer.png")
 const BUILD_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Interact Hammer.png")
+const RUN_PICKAXE_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run Pickaxe.png")
+const RUN_GOLD_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run Gold.png")
+const MINE_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Interact Pickaxe.png")
 const FRAME_SIZE := Vector2i(192, 192)
 ## Altura (em px, a partir do topo do frame) onde ficam os pés do personagem.
 const FEET_Y := 127
@@ -27,11 +30,16 @@ const IDLE_TIME := Vector2(1.5, 4.0)  # segundos (mín., máx.)
 const MIN_WALK_DISTANCE := 60.0
 const PATH_CHECK_STEP := 16.0
 const TARGET_ATTEMPTS := 8
-## Madeira ganha a cada machadada completa (um ciclo da animação de corte).
-const WOOD_PER_CHOP := 2
-## Quanta madeira cabe na mochila antes de ter que levar para casa. Com 13, uma árvore grande
-## (14 a 25 de madeira) dá 2 viagens e uma pequena (5 a 12) dá 1.
-const BACKPACK_CAPACITY := 13
+## Como o aldeão trabalha em cada recurso:
+## - capacity: quanto cabe na mochila antes de levar para casa. Madeira 13: árvore grande
+##   (14 a 25) dá 2 viagens e pequena (5 a 12) dá 1. Ouro 30: minério pequeno (20 a 30) dá 1
+##   viagem, médio (40 a 60) dá 2 e grande (70 a 90) dá 3.
+## - per_swing: quanto tira a cada golpe (um ciclo da animação de trabalho).
+## - travel / work / carry: animações de ida, trabalho e volta carregado.
+const JOBS := {
+	"wood": {"capacity": 13, "per_swing": 2, "travel": "run_axe", "work": "chop", "carry": "run_wood"},
+	"gold": {"capacity": 30, "per_swing": 4, "travel": "run_pickaxe", "work": "mine", "carry": "run_gold"},
+}
 ## Machadadas (ciclos da animação) para arrancar um toco.
 const UPROOT_SWINGS := 3
 
@@ -42,13 +50,17 @@ var _target := Vector2.ZERO
 var _home := Vector2.ZERO
 var _world: World
 
-var _tree: WoodTree
+var _source: Gatherable
 var _site: Building
-var _goal := Goal.CHOP
+var _goal := Goal.GATHER
 var _uproot_swings := 0
 var _path := PackedVector2Array()
 var _path_index := 0
-var _carried_wood := 0
+var _carried := 0
+var _carried_type := ""
+## Centro da célula vizinha de onde o aldeão se aproximou do recurso: volta por ela ao sair.
+var _approach_point := Vector2.ZERO
+var _at_source := false
 
 @onready var _sprite: AnimatedSprite2D = $AnimatedSprite2D
 
@@ -77,15 +89,16 @@ func is_available() -> bool:
 	return _state == State.IDLE or _state == State.WALK
 
 
-## Manda o aldeão trabalhar em `tree` seguindo `path` (pontos do mundo): cortar, se for árvore,
-## ou arrancar, se for toco. Reserva ele em GameState e reserva a árvore (que para de crescer).
-func assign_gather(tree: WoodTree, path: PackedVector2Array) -> void:
+## Manda o aldeão trabalhar em `source` seguindo `path` (pontos do mundo): coletar, ou arrancar
+## se for um toco. Reserva ele em GameState e reserva o recurso (toco reservado não cresce).
+func assign_gather(source: Gatherable, path: PackedVector2Array) -> void:
 	if not is_available() or not GameState.reserve_villager():
 		return
-	_tree = tree
-	_goal = Goal.UPROOT if tree.is_stump() else Goal.CHOP
-	_tree.worker = self  # reservada durante todas as viagens; um toco reservado não cresce
-	_begin_path(State.TO_TREE, path, "run_axe")
+	_source = source
+	var tree := source as WoodTree
+	_goal = Goal.UPROOT if tree != null and tree.is_stump() else Goal.GATHER
+	_source.worker = self  # reservado durante todas as viagens
+	_walk_to_source(path)
 
 
 ## Aldeão disponível com o menor caminho, calculado por `path_for(pawn)`. Vazio se nenhum chega;
@@ -119,7 +132,7 @@ func _physics_process(delta: float) -> void:
 		State.WALK:
 			if _step_towards(_target, delta, WALK_SPEED):
 				_start_idle()
-		State.TO_TREE, State.TO_HOME, State.TO_SITE:
+		State.TO_SOURCE, State.TO_HOME, State.TO_SITE:
 			_follow_path(delta)
 		State.BUILD:
 			_site.advance_construction(delta)
@@ -148,12 +161,12 @@ func _follow_path(delta: float) -> void:
 
 func _on_path_finished() -> void:
 	match _state:
-		State.TO_TREE:
-			_arrive_at_tree()
+		State.TO_SOURCE:
+			_arrive_at_source()
 		State.TO_SITE:
 			_arrive_at_site()
 		State.TO_HOME:
-			_deliver_wood()
+			_deliver()
 
 
 func _arrive_at_site() -> void:
@@ -169,19 +182,30 @@ func _finish_building() -> void:
 	_start_idle()
 
 
-func _arrive_at_tree() -> void:
-	_sprite.flip_h = _tree.position.x < position.x
-	if _tree.stage == WoodTree.Stage.SAPLING:
+## Segue `path` até o recurso: o último ponto (centro da célula vizinha) é trocado pelo ponto de
+## trabalho, para o aldeão ir direto até lá, sem passar dele e voltar.
+func _walk_to_source(path: PackedVector2Array) -> void:
+	if not path.is_empty():
+		_approach_point = path[path.size() - 1]
+		path[path.size() - 1] = _source.get_work_position(_approach_point)
+	_begin_path(State.TO_SOURCE, path, JOBS[_source.resource_type].travel)
+
+
+func _arrive_at_source() -> void:
+	_at_source = true
+	_sprite.flip_h = _source.position.x < position.x
+	var tree := _source as WoodTree
+	if tree != null and tree.stage == WoodTree.Stage.SAPLING:
 		# A muda ainda está crescendo: espera ela ficar adulta e só então decide o que fazer.
 		_state = State.WAIT_GROWTH
 		_sprite.play("idle")
-		_tree.regrown.connect(_arrive_at_tree, CONNECT_ONE_SHOT)
-	elif _tree.is_grown():
-		# Árvore adulta: corta primeiro, mesmo que a ordem tenha sido para o toco. Com a pausa do
-		# crescimento isso não deveria acontecer, mas assim o aldeão nunca fica "perdido".
-		_state = State.CHOP
-		_sprite.play("chop")
-	elif _goal == Goal.UPROOT and _tree.is_stump():
+		tree.regrown.connect(_arrive_at_source, CONNECT_ONE_SHOT)
+	elif _source.can_harvest():
+		# Vale também para árvore que voltou a crescer quando a ordem era arrancar o toco: corta
+		# primeiro. Com a pausa do crescimento isso não deveria acontecer, mas assim não trava.
+		_state = State.GATHER
+		_sprite.play(JOBS[_source.resource_type].work)
+	elif _goal == Goal.UPROOT and tree != null and tree.is_stump():
 		_state = State.UPROOT
 		_uproot_swings = 0
 		_sprite.play("chop")
@@ -189,12 +213,19 @@ func _arrive_at_tree() -> void:
 		_finish_task()
 
 
-## Chamado a cada ciclo completo de uma animação em loop; no corte, cada ciclo é uma machadada.
+## Chamado a cada ciclo completo de uma animação em loop; trabalhando, cada ciclo é um golpe.
 func _on_animation_looped() -> void:
 	match _state:
-		State.CHOP:
-			_carried_wood += _tree.take_wood(mini(WOOD_PER_CHOP, BACKPACK_CAPACITY - _carried_wood))
-			if _carried_wood >= BACKPACK_CAPACITY or _tree.is_depleted():
+		State.GATHER:
+			var job: Dictionary = JOBS[_source.resource_type]
+			_carried_type = _source.resource_type
+			_carried += _source.harvest(mini(job.per_swing, job.capacity - _carried))
+			var exhausted := not _source.can_harvest()
+			var full: bool = _carried >= job.capacity
+			# Um minério esgotado sai do mapa no fim do frame: a referência não pode mais ser usada.
+			if _source.is_queued_for_deletion():
+				_source = null
+			if full or exhausted:
 				_go_home()
 		State.UPROOT:
 			_uproot_swings += 1
@@ -203,47 +234,61 @@ func _on_animation_looped() -> void:
 
 
 func _finish_uproot() -> void:
-	_carried_wood += _tree.uproot()
+	_carried_type = "wood"
+	_carried += (_source as WoodTree).uproot()
 	# A árvore sai do jogo no fim do frame: daqui em diante a referência não pode mais ser usada.
-	_tree = null
+	_source = null
 	_go_home()
 
 
 func _go_home() -> void:
-	var path := _world.find_path(position, _home)
+	# Trabalhando por trás, o aldeão fica dentro da célula do recurso; nesse caso sai pela célula
+	# vizinha por onde chegou.
+	var leave_through_approach := _at_source and not _world.is_point_walkable(position)
+	var path := _world.find_path(_approach_point if leave_through_approach else position, _home)
 	if path.is_empty():
 		# Sem caminho até a porta (ex.: cercada por construções): entrega aqui mesmo,
-		# para a madeira não se perder nem o aldeão ficar preso na tarefa.
-		_deliver_wood()
+		# para a carga não se perder nem o aldeão ficar preso na tarefa.
+		_deliver()
 		return
-	_begin_path(State.TO_HOME, path, "run_wood")
+	if leave_through_approach:
+		path.insert(0, _approach_point)
+	_at_source = false
+	_begin_path(State.TO_HOME, path, JOBS[_carried_type].carry)
 
 
-func _deliver_wood() -> void:
-	if _carried_wood > 0:
-		GameState.add_resource("wood", _carried_wood)
-		_carried_wood = 0
-	# Volta para a árvore se ainda há trabalho nela e o caminho continua existindo.
-	if _should_return_to_tree():
-		var path := _world.find_path_to_adjacent(position, _tree.cell)
+func _deliver() -> void:
+	if _carried > 0:
+		GameState.add_resource(_carried_type, _carried)
+		_carried = 0
+	# Volta ao recurso se ainda há trabalho nele e o caminho continua existindo.
+	if _should_return_to_source():
+		var path := _world.find_path_to_adjacent(position, _source.cell)
 		if not path.is_empty():
-			_begin_path(State.TO_TREE, path, "run_axe")
+			_walk_to_source(path)
 			return
 	_finish_task()
 
 
-## Ainda há o que fazer na árvore: madeira para cortar ou, se a ordem era arrancar, um toco.
-func _should_return_to_tree() -> bool:
-	if _tree == null or not is_instance_valid(_tree):
+## Ainda há o que fazer: recurso para coletar ou, se a ordem era arrancar, um toco.
+func _should_return_to_source() -> bool:
+	if _source == null or not is_instance_valid(_source):
 		return false
-	return _tree.is_grown() or (_goal == Goal.UPROOT and _tree.is_stump())
+	if _source.can_harvest():
+		return true
+	var tree := _source as WoodTree
+	return _goal == Goal.UPROOT and tree != null and tree.is_stump()
 
 
 func _finish_task() -> void:
-	if _tree != null and is_instance_valid(_tree):
-		_tree.worker = null  # libera a árvore (e o toco volta a contar o crescimento)
-	_tree = null
-	_goal = Goal.CHOP
+	if _at_source and not _world.is_point_walkable(position):
+		# Terminou em cima da célula do recurso: volta à célula vizinha.
+		position = _approach_point
+	_at_source = false
+	if _source != null and is_instance_valid(_source):
+		_source.worker = null  # libera o recurso (e um toco volta a contar o crescimento)
+	_source = null
+	_goal = Goal.GATHER
 	GameState.release_villager()
 	_start_idle()
 
@@ -303,4 +348,7 @@ func _build_frames() -> SpriteFrames:
 	SpriteSheets.add_animation(frames, "chop", CHOP_TEXTURE, FRAME_SIZE, 10.0)
 	SpriteSheets.add_animation(frames, "run_hammer", RUN_HAMMER_TEXTURE, FRAME_SIZE, 10.0)
 	SpriteSheets.add_animation(frames, "build", BUILD_TEXTURE, FRAME_SIZE, 6.0)
+	SpriteSheets.add_animation(frames, "run_pickaxe", RUN_PICKAXE_TEXTURE, FRAME_SIZE, 10.0)
+	SpriteSheets.add_animation(frames, "run_gold", RUN_GOLD_TEXTURE, FRAME_SIZE, 10.0)
+	SpriteSheets.add_animation(frames, "mine", MINE_TEXTURE, FRAME_SIZE, 10.0)
 	return frames
