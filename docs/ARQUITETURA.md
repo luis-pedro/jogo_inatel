@@ -13,7 +13,7 @@
 
 - `assets/` — arte e áudio. Não renomear os arquivos do Tiny Swords (facilita atualizar o pack).
 - `assets/custom/` — arte feita pela equipe (ex.: canteiro de obras).
-- `tools/` — scripts auxiliares fora do jogo (ex.: `make_construction_site.py` gera `house_construction_site.png`, o canteiro da casa).
+- `tools/` — scripts auxiliares fora do jogo (ex.: `make_construction_site.py` gera `house_construction_site.png`, o canteiro da casa; `make_sign.py` gera a estaca e a tábua da plaquinha).
 - `scenes/<funcionalidade>/` — cada cena junto do que for exclusivo dela. Ex.: `scenes/buildings/house/house.tscn`.
 - `scripts/` — scripts compartilhados ou que não pertencem a uma cena específica.
 - `scripts/autoload/` — singletons globais.

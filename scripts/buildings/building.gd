@@ -14,16 +14,21 @@ const DUST_SCALE := 3.0
 ## Altura do centro da nuvem, como fração da altura do sprite do prédio (a partir da base).
 const DUST_CENTER_HEIGHT := 0.52
 const BAR_SIZE := Vector2(90, 12)
-const SIGN_FONT_SIZE := 15
+## Plaquinha fincada no canteiro (sprites gerados por tools/make_sign.py).
+const SIGN_POST_TEXTURE := preload("res://assets/custom/sign_post.png")
+const SIGN_BOARD_TEXTURE := preload("res://assets/custom/sign_board.png")
+const SIGN_FONT_SIZE := 14
+const SIGN_TEXT_COLOR := Color("4a2418")
+const SIGN_TEXT_PADDING := 10.0
+## Bordas da tábua que não esticam (px).
+const SIGN_BOARD_MARGIN := Vector2i(16, 8)
+## Altura da base da tábua acima do chão (px): quanto da estaca aparece embaixo.
+const SIGN_BOARD_ELEVATION := 18.0
 ## Onde a placa é fincada, medido a partir do canto inferior direito do canteiro.
 const SIGN_CORNER_OFFSET := Vector2(-24, -6)
-const SIGN_POST_HEIGHT := 22.0
 ## Quanto a tábua da placa pode passar da lateral do canteiro (nomes longos crescem para a esquerda).
 const SIGN_MAX_OVERHANG := 10.0
 const SIGN_SHADOW_COLOR := Color("785842")
-const SIGN_WOOD_COLOR := Color("96623f")
-const SIGN_OUTLINE_COLOR := Color("222034")
-const SIGN_TEXT_COLOR := Color("f6e7c1")
 
 var data: BuildingData
 var cell: Vector2i
@@ -104,31 +109,38 @@ func _create_construction_site() -> void:
 ## Monta a plaquinha (sombra, estaca e tábua com o nome). A origem de `sign_root` é o pé da estaca.
 ## `max_right` é até onde a tábua pode ir para a direita a partir dele.
 func _fill_sign(sign_root: Node2D, text: String, max_right: float) -> void:
-	sign_root.add_child(_create_block(Rect2(-9, -2, 18, 5), SIGN_SHADOW_COLOR))
-	sign_root.add_child(_create_block(Rect2(-5, -SIGN_POST_HEIGHT, 10, SIGN_POST_HEIGHT + 1), SIGN_OUTLINE_COLOR))
-	sign_root.add_child(_create_block(Rect2(-2, -SIGN_POST_HEIGHT, 4, SIGN_POST_HEIGHT - 1), SIGN_WOOD_COLOR))
+	sign_root.add_child(_create_block(Rect2(-10, -2, 20, 5), SIGN_SHADOW_COLOR))
+
+	var post := Sprite2D.new()
+	post.texture = SIGN_POST_TEXTURE
+	post.centered = false
+	post.position = Vector2(-SIGN_POST_TEXTURE.get_width() / 2.0, -SIGN_POST_TEXTURE.get_height())
+	sign_root.add_child(post)
 
 	var label := Label.new()
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", SIGN_FONT_SIZE)
 	label.add_theme_color_override("font_color", SIGN_TEXT_COLOR)
-	var board := StyleBoxFlat.new()
-	board.bg_color = SIGN_WOOD_COLOR
-	board.border_color = SIGN_OUTLINE_COLOR
-	board.set_border_width_all(3)
-	board.set_corner_radius_all(3)
-	board.content_margin_left = 9
-	board.content_margin_right = 9
-	board.content_margin_top = 2
-	board.content_margin_bottom = 2
-	label.add_theme_stylebox_override("normal", board)
-	sign_root.add_child(label)
-	# O tamanho só é conhecido depois de entrar na árvore.
-	label.reset_size()
-	var left := minf(-label.size.x / 2.0, max_right - label.size.x)
-	# A tábua cobre a ponta de cima da estaca.
-	label.position = Vector2(left, -SIGN_POST_HEIGHT - label.size.y + 4).round()
+
+	# NinePatchRect: as bordas ficam intactas e só o miolo da tábua se repete para caber o nome.
+	var board := NinePatchRect.new()
+	board.texture = SIGN_BOARD_TEXTURE
+	board.patch_margin_left = SIGN_BOARD_MARGIN.x
+	board.patch_margin_right = SIGN_BOARD_MARGIN.x
+	board.patch_margin_top = SIGN_BOARD_MARGIN.y
+	board.patch_margin_bottom = SIGN_BOARD_MARGIN.y
+	board.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sign_root.add_child(board)
+	board.add_child(label)
+	# O tamanho do texto só é conhecido depois de entrar na árvore.
+	var width := maxf(ceilf(label.get_minimum_size().x) + SIGN_TEXT_PADDING * 2.0, SIGN_BOARD_TEXTURE.get_width())
+	board.size = Vector2(width, SIGN_BOARD_TEXTURE.get_height())
+	label.size = board.size
+	var left := minf(-width / 2.0, max_right - width)
+	board.position = Vector2(left, -SIGN_BOARD_ELEVATION - board.size.y).round()
 
 
 func _create_block(rect: Rect2, color: Color) -> ColorRect:
