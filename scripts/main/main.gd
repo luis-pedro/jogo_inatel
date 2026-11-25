@@ -40,14 +40,12 @@ const GOLD_VEIN_SPACING := 10.0
 ## Distância (em células) em volta do ouro onde não nascem árvores, para dar acesso ao veio.
 const GOLD_TREE_MARGIN := 1.5
 
-## As ovelhas nascem em rebanhos, num pasto sem árvores em volta.
+## As ovelhas vivem em rebanhos, num pasto sem árvores em volta (ver `Flock`).
 const FLOCK_COUNT := 3
 const SHEEP_PER_FLOCK := Vector2i(3, 4)  # mín., máx.
 const FLOCK_CLEARING_RADIUS := 7.0
 const FLOCK_SPACING := 9.0
-## Distância (em células) em volta do centro do rebanho onde se espalham as ovelhas e onde não
-## nascem árvores.
-const FLOCK_SPREAD := 2.0
+## Distância (em células) em volta do pasto onde não nascem árvores.
 const PASTURE_TREE_MARGIN := 4.5
 
 ## Quantas árvores nascem no mapa e quão longe da casa inicial (em células) fica a clareira
@@ -209,11 +207,10 @@ func _spawn_gold() -> Array[Vector2i]:
 func _spawn_flocks(gold_cells: Array[Vector2i]) -> Array[Vector2i]:
 	var centers := _pick_group_centers(FLOCK_COUNT, FLOCK_CLEARING_RADIUS, FLOCK_SPACING, gold_cells)
 	for center in centers:
-		var pasture := _free_cells(func(cell: Vector2i):
-			return Vector2(cell - center).length() <= FLOCK_SPREAD and _is_away_from_border(cell))
-		pasture.shuffle()
-		for i in mini(randi_range(SHEEP_PER_FLOCK.x, SHEEP_PER_FLOCK.y), pasture.size()):
-			_spawn_sheep(pasture[i])
+		var flock := Flock.new()
+		flock.setup(_world, center, randi_range(SHEEP_PER_FLOCK.x, SHEEP_PER_FLOCK.y), _spawn_sheep)
+		add_child(flock)
+		flock.populate()
 	return centers
 
 
@@ -273,10 +270,11 @@ func _free_cells(filter: Callable) -> Array[Vector2i]:
 	return cells
 
 
-func _spawn_sheep(cell: Vector2i) -> void:
+func _spawn_sheep(cell: Vector2i) -> Sheep:
 	var sheep: Sheep = sheep_scene.instantiate()
 	sheep.setup(_world)
 	_add_resource_node(sheep, cell)
+	return sheep
 
 
 func _spawn_gold_ore(cell: Vector2i) -> void:

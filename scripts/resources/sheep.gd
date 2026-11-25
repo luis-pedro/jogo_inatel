@@ -1,8 +1,8 @@
 class_name Sheep
 extends Gatherable
-## Ovelha, a fonte de comida. Pasta perto do rebanho, andando de uma célula para outra. Com um
-## aldeão reservado ela para; ele a abate com alguns golpes e depois recolhe a carne do chão.
-## Não renasce.
+## Ovelha, a fonte de comida. Anda de uma célula para outra sem se afastar do seu rebanho
+## (ver `Flock`). Com um aldeão reservado ela para; ele a abate com alguns golpes e depois recolhe
+## a carne do chão. Duas adultas juntas dão cria, repondo o rebanho.
 
 enum Stage { ALIVE, MEAT }
 
@@ -20,9 +20,14 @@ const MEAT_FEET_Y := 46
 
 const WALK_SPEED := 40.0
 const PAUSE_TIME := Vector2(2.0, 5.0)  # segundos entre um passo e outro (mín., máx.)
+## Pausa curtíssima para quem ficou longe do rebanho alcançar o grupo.
+const CATCH_UP_PAUSE := Vector2(0.1, 0.6)
 const STEP_CHANCE := 0.6
-## Quantas células a ovelha pode se afastar de onde nasceu.
-const PASTURE_RADIUS := 2
+## Distância máxima (em células) que a ovelha fica do centro do rebanho.
+const FLOCK_RADIUS := 2.0
+## Duração do crescimento de uma ovelha recém-nascida.
+const GROW_SECONDS := 1.5
+const LAMB_SCALE := 0.3
 const HITS_TO_KILL := 3
 ## Quanta comida uma ovelha dá (mín., máx.). Com a mochila de 15, são 1 ou 2 viagens.
 const FOOD_RANGE := Vector2i(12, 30)
@@ -30,14 +35,16 @@ const FOOD_RANGE := Vector2i(12, 30)
 var stage := Stage.ALIVE
 ## Comida que ela ainda tem.
 var food := 0
+## Centro do rebanho: a ovelha fica perto desta célula. O `Flock` a atualiza.
+var herd_cell := Vector2i.ZERO
 
 var _world: World
-var _home_cell := Vector2i.ZERO
 var _previous_cell := Vector2i.ZERO
 var _destination := Vector2.ZERO
 var _moving := false
 var _pause := 0.0
 var _hits := 0
+var _growing := false
 
 @onready var _sprite: AnimatedSprite2D = $AnimatedSprite2D
 
@@ -54,7 +61,7 @@ func setup(world: World) -> void:
 func _ready() -> void:
 	super()
 	food = randi_range(FOOD_RANGE.x, FOOD_RANGE.y)
-	_home_cell = cell
+	herd_cell = cell
 
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
@@ -86,10 +93,35 @@ func _process(delta: float) -> void:
 		return
 	_pause -= delta
 	if _pause <= 0.0:
-		if randf() < STEP_CHANCE:
+		if _is_straying() or randf() < STEP_CHANCE:
 			_try_step()
 		else:
 			_start_pause()
+
+
+## O rebanho mudou de lugar: sai logo atrás dele (com um pequeno atraso para não irem todas juntas).
+func follow(new_herd_cell: Vector2i) -> void:
+	herd_cell = new_herd_cell
+	_pause = minf(_pause, randf_range(0.0, 1.0))
+
+
+## Ovelha recém-nascida: aparece pequena e cresce; só depois pode ser caçada.
+func grow_in() -> void:
+	_growing = true
+	_set_targetable(false)
+	_sprite.scale = Vector2.ONE * LAMB_SCALE
+	var tween := create_tween()
+	tween.tween_property(_sprite, "scale", Vector2.ONE, GROW_SECONDS) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(func():
+		_growing = false
+		_set_targetable(true)
+	)
+
+
+## Viva, adulta e sem ninguém atrás dela.
+func can_breed() -> bool:
+	return stage == Stage.ALIVE and not _growing and worker == null
 
 
 ## Ovelhas não bloqueiam o caminho dos aldeões; só impedem que construam em cima delas.
@@ -124,13 +156,19 @@ func harvest(amount: int) -> int:
 	return taken
 
 
-## Passa para uma célula vizinha livre dentro do pasto.
+## Passa para uma célula vizinha livre sem se afastar do rebanho (ou, se estiver longe, para uma
+## que a aproxime dele).
 func _try_step() -> void:
-	var options: Array[Vector2i] = []
+	var free: Array[Vector2i] = []
 	for direction: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
-		var next := cell + direction
-		if Vector2(next - _home_cell).length() <= PASTURE_RADIUS and _world.is_cell_free(next):
-			options.append(next)
+		if _world.is_cell_free(cell + direction):
+			free.append(cell + direction)
+	var distance := _herd_distance(cell)
+	var options := free.filter(func(next: Vector2i):
+		return _herd_distance(next) < distance if _is_straying() else _herd_distance(next) <= FLOCK_RADIUS)
+	# Longe e sem passo que aproxime (algo no caminho): anda para qualquer lado livre e contorna.
+	if options.is_empty() and _is_straying():
+		options = free
 	if options.is_empty():
 		_start_pause()
 		return
@@ -145,6 +183,14 @@ func _try_step() -> void:
 	_sprite.play("move")
 
 
+func _herd_distance(from_cell: Vector2i) -> float:
+	return Vector2(from_cell - herd_cell).length()
+
+
+func _is_straying() -> bool:
+	return _herd_distance(cell) > FLOCK_RADIUS
+
+
 func _finish_step() -> void:
 	_moving = false
 	_world.release_cell(_previous_cell)
@@ -152,7 +198,8 @@ func _finish_step() -> void:
 
 
 func _start_pause() -> void:
-	_pause = randf_range(PAUSE_TIME.x, PAUSE_TIME.y)
+	var time := CATCH_UP_PAUSE if _is_straying() else PAUSE_TIME
+	_pause = randf_range(time.x, time.y)
 	_sprite.play("graze" if randf() < 0.5 else "idle")
 
 
