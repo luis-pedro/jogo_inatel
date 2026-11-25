@@ -2,15 +2,14 @@ class_name Building
 extends Node2D
 ## Construção posta no mapa. A origem do nó é o canto inferior esquerdo da área ocupada
 ## no chão, para o y_sort ordenar os prédios pela base.
-## Em obra, aparece como uma "planta" translúcida que vai sendo erguida de baixo para cima
-## enquanto um aldeão chama `advance_construction()`.
+## Em obra, fica invisível até um aldeão chegar; depois é erguida de baixo para cima
+## enquanto ele chama `advance_construction()`.
 
 signal construction_finished(building: Building)
 
 const DUST_TEXTURE := preload("res://assets/Particle FX/Dust_01.png")
 const DUST_FRAME_SIZE := Vector2i(64, 64)
 const DUST_PUFFS := 3
-const BLUEPRINT_COLOR := Color(1.0, 1.0, 1.0, 0.35)
 const BAR_SIZE := Vector2(90, 12)
 
 var data: BuildingData
@@ -47,11 +46,27 @@ func _ready() -> void:
 
 
 ## Transforma o prédio em obra. Chamar depois de ele entrar na árvore da cena.
+## Nada aparece no terreno até o primeiro `advance_construction()`, ou seja, até o aldeão chegar.
 func start_construction() -> void:
 	under_construction = true
 	progress = 0.0
-	_sprite.modulate = BLUEPRINT_COLOR
+	_sprite.visible = false
 
+
+## Soma trabalho à obra (chamado pelo aldeão construtor a cada frame de física).
+func advance_construction(delta: float) -> void:
+	if not under_construction:
+		return
+	if _reveal == null:
+		_create_construction_visuals()
+	progress = minf(progress + delta / data.build_time, 1.0)
+	_update_construction_visual()
+	if progress >= 1.0:
+		_finish_construction()
+
+
+## Parte já erguida, poeira e barra de progresso.
+func _create_construction_visuals() -> void:
 	_reveal = Sprite2D.new()
 	_reveal.texture = _sprite.texture
 	_reveal.centered = false
@@ -67,17 +82,6 @@ func start_construction() -> void:
 	_bar = _create_progress_bar()
 	_bar.position = Vector2((footprint_width - BAR_SIZE.x) / 2.0, -_sprite.texture.get_height() - BAR_SIZE.y)
 	add_child(_bar)
-	_update_construction_visual()
-
-
-## Soma trabalho à obra (chamado pelo aldeão construtor a cada frame de física).
-func advance_construction(delta: float) -> void:
-	if not under_construction:
-		return
-	progress = minf(progress + delta / data.build_time, 1.0)
-	_update_construction_visual()
-	if progress >= 1.0:
-		_finish_construction()
 
 
 func _update_construction_visual() -> void:
@@ -92,7 +96,7 @@ func _update_construction_visual() -> void:
 
 func _finish_construction() -> void:
 	under_construction = false
-	_sprite.modulate = Color.WHITE
+	_sprite.visible = true
 	_reveal.queue_free()
 	_bar.queue_free()
 	for puff in _dust:
