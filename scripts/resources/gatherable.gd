@@ -67,6 +67,11 @@ func get_work_extent() -> Vector2:
 	return Vector2(14, 44)
 
 
+## A ferramenta do aldeão acabou de acertar (`_from` é a posição dele). Só efeito visual.
+func react_to_hit(_from: Vector2) -> void:
+	pass
+
+
 ## Retira até `_amount` do recurso e devolve quanto foi retirado.
 func harvest(_amount: int) -> int:
 	return 0

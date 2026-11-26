@@ -45,6 +45,8 @@ const JOBS := {
 	"gold": {"capacity": 30, "per_swing": 4, "travel": "run_pickaxe", "work": "mine", "carry": "run_gold"},
 	"food": {"capacity": 15, "per_swing": 3, "travel": "run_knife", "work": "butcher", "carry": "run_meat"},
 }
+## Quadro das animações de trabalho em que a ferramenta acerta o alvo.
+const IMPACT_FRAME := 1
 ## Machadadas (ciclos da animação) para arrancar um toco.
 const UPROOT_SWINGS := 3
 
@@ -81,6 +83,7 @@ func _ready() -> void:
 	add_to_group(PhysicsLayers.GROUP_UNITS)
 	_sprite.sprite_frames = _build_frames()
 	_sprite.animation_looped.connect(_on_animation_looped)
+	_sprite.frame_changed.connect(_on_frame_changed)
 	# Origem do nó nos pés, para o y_sort ordenar corretamente.
 	_sprite.offset = Vector2(0, FRAME_SIZE.y / 2.0 - FEET_Y)
 	_start_idle()
@@ -216,6 +219,12 @@ func _arrive_at_source() -> void:
 		_sprite.play("chop")
 	else:
 		_finish_task()
+
+
+## No quadro do impacto o recurso reage; a contagem do golpe acontece ao fim do ciclo.
+func _on_frame_changed() -> void:
+	if _state == State.GATHER and _sprite.frame == IMPACT_FRAME:
+		_source.react_to_hit(position)
 
 
 ## Chamado a cada ciclo completo de uma animação em loop; trabalhando, cada ciclo é um golpe.

@@ -29,6 +29,11 @@ const FLOCK_RADIUS := 2.0
 const GROW_SECONDS := 1.5
 const LAMB_SCALE := 0.3
 const HITS_TO_KILL := 3
+## Reação a um golpe: cor do clarão, achatamento, recuo (px) e duração.
+const HIT_COLOR := Color(1.0, 0.35, 0.35)
+const HIT_SQUASH := Vector2(1.25, 0.75)
+const HIT_KNOCKBACK := 8.0
+const HIT_SECONDS := 0.3
 ## Quanta comida uma ovelha dá (mín., máx.). Com a mochila de 15, são 1 ou 2 viagens.
 const FOOD_RANGE := Vector2i(12, 30)
 
@@ -45,6 +50,7 @@ var _moving := false
 var _pause := 0.0
 var _hits := 0
 var _growing := false
+var _hit_tween: Tween
 
 @onready var _sprite: AnimatedSprite2D = $AnimatedSprite2D
 
@@ -142,6 +148,34 @@ func can_harvest() -> bool:
 	return food > 0
 
 
+## O pack não tem sprite de ovelha apanhando, então a reação é feita por código: clarão
+## vermelho, achatada, um recuo para longe do aldeão e um tufo de lã.
+func react_to_hit(from: Vector2) -> void:
+	if stage != Stage.ALIVE:
+		return
+	var away := -1.0 if from.x > position.x else 1.0
+	_reset_hit_effect()
+	_sprite.modulate = HIT_COLOR
+	_sprite.scale = HIT_SQUASH
+	_sprite.position.x = away * HIT_KNOCKBACK
+	# Tudo volta ao normal ao mesmo tempo, com um leve balanço elástico.
+	_hit_tween = create_tween().set_parallel()
+	_hit_tween.tween_property(_sprite, "modulate", Color.WHITE, HIT_SECONDS)
+	_hit_tween.tween_property(_sprite, "scale", Vector2.ONE, HIT_SECONDS) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_hit_tween.tween_property(_sprite, "position:x", 0.0, HIT_SECONDS) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_spawn_dust(Vector2(-away * 14.0, -22), 0.7)
+
+
+func _reset_hit_effect() -> void:
+	if _hit_tween:
+		_hit_tween.kill()
+	_sprite.modulate = Color.WHITE
+	_sprite.scale = Vector2.ONE
+	_sprite.position = Vector2.ZERO
+
+
 ## Viva, cada chamada é um golpe (não rende comida). Abatida, retira a carne.
 func harvest(amount: int) -> int:
 	if stage == Stage.ALIVE:
@@ -209,21 +243,22 @@ func _die() -> void:
 		_finish_step()
 	stage = Stage.MEAT
 	set_process(false)
+	_reset_hit_effect()
 	_sprite.flip_h = false
 	_sprite.offset = Vector2(0, MEAT_FRAME_SIZE.y / 2.0 - MEAT_FEET_Y)
 	_sprite.play("meat")
-	_spawn_dust()
+	_spawn_dust(Vector2(0, -18), 1.4)
 
 
-## Nuvem de poeira que toca uma vez e se remove.
-func _spawn_dust() -> void:
+## Nuvem de poeira (ou lã) que toca uma vez e se remove.
+func _spawn_dust(offset: Vector2, size: float) -> void:
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
 	SpriteSheets.add_animation(frames, "dust", DUST_TEXTURE, DUST_FRAME_SIZE, 12.0, false)
 	var puff := AnimatedSprite2D.new()
 	puff.sprite_frames = frames
-	puff.position = Vector2(0, -18)
-	puff.scale = Vector2(1.4, 1.4)
+	puff.position = offset
+	puff.scale = Vector2.ONE * size
 	puff.animation_finished.connect(puff.queue_free)
 	add_child(puff)
 	puff.play("dust")
