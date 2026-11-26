@@ -40,6 +40,10 @@ const GOLD_VEIN_SPACING := 10.0
 ## Distância (em células) em volta do ouro onde não nascem árvores, para dar acesso ao veio.
 const GOLD_TREE_MARGIN := 1.5
 
+## Carregado pelo caminho (e não pelo nome global `Flock`) para funcionar mesmo quando o editor
+## aberto ainda não registrou a classe.
+const FlockScript := preload("res://scripts/resources/flock.gd")
+
 ## As ovelhas vivem em rebanhos, num pasto sem árvores em volta (ver `Flock`).
 const FLOCK_COUNT := 3
 const SHEEP_PER_FLOCK := Vector2i(3, 4)  # mín., máx.
@@ -207,7 +211,7 @@ func _spawn_gold() -> Array[Vector2i]:
 func _spawn_flocks(gold_cells: Array[Vector2i]) -> Array[Vector2i]:
 	var centers := _pick_group_centers(FLOCK_COUNT, FLOCK_CLEARING_RADIUS, FLOCK_SPACING, gold_cells)
 	for center in centers:
-		var flock := Flock.new()
+		var flock := FlockScript.new()
 		flock.setup(_world, center, randi_range(SHEEP_PER_FLOCK.x, SHEEP_PER_FLOCK.y), _spawn_sheep)
 		add_child(flock)
 		flock.populate()
