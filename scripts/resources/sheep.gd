@@ -1,7 +1,7 @@
 class_name Sheep
 extends Gatherable
 ## Ovelha, a fonte de comida. Anda de uma célula para outra sem se afastar do seu rebanho
-## (ver `Flock`). Com um aldeão reservado ela para; ele a abate com alguns golpes e depois recolhe
+## (ver `Flock`) e de vez em quando dá uma corrida. Com um aldeão reservado ela para; ele a abate com alguns golpes e depois recolhe
 ## a carne do chão. Duas adultas juntas dão cria, repondo o rebanho.
 
 enum Stage { ALIVE, MEAT }
@@ -19,6 +19,14 @@ const FEET_Y := 76
 const MEAT_FEET_Y := 46
 
 const WALK_SPEED := 40.0
+const RUN_SPEED := 130.0
+## O pack tem uma só animação de movimento: mais lenta andando, acelerada correndo.
+const WALK_FPS := 7.0
+const RUN_FPS := 14.0
+## Segundos entre uma corrida e outra, para cada ovelha (mín., máx.).
+const RUN_INTERVAL := Vector2(12.0, 30.0)
+## Quantas células ela percorre numa corrida (mín., máx.).
+const RUN_STEPS := Vector2i(2, 4)
 const PAUSE_TIME := Vector2(2.0, 5.0)  # segundos entre um passo e outro (mín., máx.)
 ## Pausa curtíssima para quem ficou longe do rebanho alcançar o grupo.
 const CATCH_UP_PAUSE := Vector2(0.1, 0.6)
@@ -51,6 +59,11 @@ var _pause := 0.0
 var _hits := 0
 var _growing := false
 var _hit_tween: Tween
+## Segundos até a próxima corrida e passos que faltam na corrida atual (0 = andando).
+var _run_cooldown := 0.0
+var _run_steps_left := 0
+var _running := false
+var _last_direction := Vector2i.ZERO
 
 @onready var _sprite: AnimatedSprite2D = $AnimatedSprite2D
 
@@ -72,7 +85,8 @@ func _ready() -> void:
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
 	SpriteSheets.add_animation(frames, "idle", IDLE_TEXTURE, FRAME_SIZE, 8.0)
-	SpriteSheets.add_animation(frames, "move", MOVE_TEXTURE, FRAME_SIZE, 8.0)
+	SpriteSheets.add_animation(frames, "move", MOVE_TEXTURE, FRAME_SIZE, WALK_FPS)
+	SpriteSheets.add_animation(frames, "run", MOVE_TEXTURE, FRAME_SIZE, RUN_FPS)
 	SpriteSheets.add_animation(frames, "graze", GRAZE_TEXTURE, FRAME_SIZE, 8.0)
 	SpriteSheets.add_animation(frames, "meat", MEAT_TEXTURE, MEAT_FRAME_SIZE, 1.0)
 	_sprite.sprite_frames = frames
@@ -81,21 +95,28 @@ func _ready() -> void:
 	_sprite.flip_h = randf() < 0.5
 	_set_click_size(Vector2(56, 48))
 	_start_pause()
+	_run_cooldown = roll_run_interval()
 	_sprite.frame = randi() % frames.get_frame_count(_sprite.animation)
 
 
 func _process(delta: float) -> void:
 	if stage != Stage.ALIVE:
 		return
+	_run_cooldown -= delta
 	if _moving:
-		position = position.move_toward(_destination, WALK_SPEED * delta)
+		var speed := RUN_SPEED if _running else WALK_SPEED
+		position = position.move_toward(_destination, speed * delta)
 		if position == _destination:
 			_finish_step()
 		return
 	if worker != null:
 		# Reservada: termina o passo e fica parada esperando o aldeão.
+		_stop_running()
 		if _sprite.animation != &"idle":
 			_sprite.play("idle")
+		return
+	if _run_cooldown <= 0.0:
+		_start_running()
 		return
 	_pause -= delta
 	if _pause <= 0.0:
@@ -109,6 +130,24 @@ func _process(delta: float) -> void:
 func follow(new_herd_cell: Vector2i) -> void:
 	herd_cell = new_herd_cell
 	_pause = minf(_pause, randf_range(0.0, 1.0))
+
+
+## Sorteia quanto tempo falta para a próxima corrida.
+func roll_run_interval() -> float:
+	return randf_range(RUN_INTERVAL.x, RUN_INTERVAL.y)
+
+
+## Dispara por algumas células, sem sair de perto do rebanho.
+func _start_running() -> void:
+	_run_cooldown = roll_run_interval()
+	_run_steps_left = randi_range(RUN_STEPS.x, RUN_STEPS.y)
+	_last_direction = Vector2i.ZERO
+	_try_step()
+
+
+func _stop_running() -> void:
+	_run_steps_left = 0
+	_running = false
 
 
 ## Ovelha recém-nascida: aparece pequena e cresce; só depois pode ser caçada.
@@ -204,17 +243,26 @@ func _try_step() -> void:
 	if options.is_empty() and _is_straying():
 		options = free
 	if options.is_empty():
+		_stop_running()
 		_start_pause()
 		return
+	_running = _run_steps_left > 0
 	_previous_cell = cell
-	cell = options.pick_random()
+	# Correndo, segue em linha reta enquanto der.
+	var straight := cell + _last_direction
+	cell = straight if _running and straight in options else options.pick_random()
+	_last_direction = cell - _previous_cell
 	# Durante o passo ocupa as duas células; a antiga é liberada na chegada.
 	_world.occupy_cell(cell)
 	_destination = position + Vector2((cell - _previous_cell) * World.TILE_SIZE)
 	_moving = true
 	if cell.x != _previous_cell.x:
 		_sprite.flip_h = cell.x < _previous_cell.x
-	_sprite.play("move")
+	_sprite.play("run" if _running else "move")
+	if _running:
+		_run_steps_left -= 1
+		# Poeira levantada para trás.
+		_spawn_dust(Vector2(-_last_direction.x * 18.0, -8), 0.6)
 
 
 func _herd_distance(from_cell: Vector2i) -> float:
@@ -228,7 +276,12 @@ func _is_straying() -> bool:
 func _finish_step() -> void:
 	_moving = false
 	_world.release_cell(_previous_cell)
-	_start_pause()
+	# Numa corrida, emenda o próximo passo sem parar (a não ser que tenham mandado caçá-la).
+	if _run_steps_left > 0 and worker == null and stage == Stage.ALIVE:
+		_try_step()
+	else:
+		_stop_running()
+		_start_pause()
 
 
 func _start_pause() -> void:
@@ -238,6 +291,7 @@ func _start_pause() -> void:
 
 
 func _die() -> void:
+	_run_steps_left = 0
 	if _moving:
 		position = _destination
 		_finish_step()
