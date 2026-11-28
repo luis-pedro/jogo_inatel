@@ -261,8 +261,8 @@ func _try_step() -> void:
 	_sprite.play("run" if _running else "move")
 	if _running:
 		_run_steps_left -= 1
-		# Poeira levantada para trás.
-		_spawn_dust(Vector2(-_last_direction.x * 18.0, -8), 0.6)
+		# Poeira levantada para trás; fica no chão, no ponto de onde ela saiu.
+		_spawn_dust(Vector2(-_last_direction.x * 18.0, -8), 0.6, true)
 
 
 func _herd_distance(from_cell: Vector2i) -> float:
@@ -304,8 +304,10 @@ func _die() -> void:
 	_spawn_dust(Vector2(0, -18), 1.4)
 
 
-## Nuvem de poeira (ou lã) que toca uma vez e se remove.
-func _spawn_dust(offset: Vector2, size: float) -> void:
+## Nuvem de poeira (ou lã) que toca uma vez e se remove. Por padrão é filha da ovelha: aparece
+## por cima dela e a acompanha. Com `on_ground`, fica parada no mapa e é desenhada atrás de
+## todas as entidades, porque o nó `World` vem antes de `Entities` na cena.
+func _spawn_dust(offset: Vector2, size: float, on_ground := false) -> void:
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
 	SpriteSheets.add_animation(frames, "dust", DUST_TEXTURE, DUST_FRAME_SIZE, 12.0, false)
@@ -314,5 +316,9 @@ func _spawn_dust(offset: Vector2, size: float) -> void:
 	puff.position = offset
 	puff.scale = Vector2.ONE * size
 	puff.animation_finished.connect(puff.queue_free)
-	add_child(puff)
+	if on_ground:
+		puff.position = _world.to_local(global_position + offset)
+		_world.add_child(puff)
+	else:
+		add_child(puff)
 	puff.play("dust")
