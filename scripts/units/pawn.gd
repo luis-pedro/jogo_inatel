@@ -1,7 +1,7 @@
 class_name Pawn
 extends Node2D
 ## Aldeão. Sem tarefa, passeia pela vila (idle ⇄ andar). Pode erguer uma obra (vai até ela e
-## martela até ficar pronta). Com a tarefa de coletar (árvore ou ouro):
+## martela até ficar pronta). Com a tarefa de coletar (árvore, ouro ou ovelha):
 ## vai até o recurso, trabalha até encher a mochila (ou ele acabar), leva a carga até a porta da
 ## casa, entrega (só aí o estoque sobe) e volta enquanto ainda houver o que coletar.
 
@@ -19,6 +19,9 @@ const BUILD_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Interact
 const RUN_PICKAXE_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run Pickaxe.png")
 const RUN_GOLD_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run Gold.png")
 const MINE_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Interact Pickaxe.png")
+const RUN_KNIFE_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run Knife.png")
+const RUN_MEAT_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Run Meat.png")
+const BUTCHER_TEXTURE := preload("res://assets/Units/Blue Units/Pawn/Pawn_Interact Knife.png")
 const FRAME_SIZE := Vector2i(192, 192)
 ## Altura (em px, a partir do topo do frame) onde ficam os pés do personagem.
 const FEET_Y := 127
@@ -33,13 +36,17 @@ const TARGET_ATTEMPTS := 8
 ## Como o aldeão trabalha em cada recurso:
 ## - capacity: quanto cabe na mochila antes de levar para casa. Madeira 13: árvore grande
 ##   (14 a 25) dá 2 viagens e pequena (5 a 12) dá 1. Ouro 30: minério pequeno (20 a 30) dá 1
-##   viagem, médio (40 a 60) dá 2 e grande (70 a 90) dá 3.
+##   viagem, médio (40 a 60) dá 2 e grande (70 a 90) dá 3. Comida 15: uma ovelha (12 a 30)
+##   dá 1 ou 2 viagens.
 ## - per_swing: quanto tira a cada golpe (um ciclo da animação de trabalho).
 ## - travel / work / carry: animações de ida, trabalho e volta carregado.
 const JOBS := {
 	"wood": {"capacity": 13, "per_swing": 2, "travel": "run_axe", "work": "chop", "carry": "run_wood"},
 	"gold": {"capacity": 30, "per_swing": 4, "travel": "run_pickaxe", "work": "mine", "carry": "run_gold"},
+	"food": {"capacity": 15, "per_swing": 3, "travel": "run_knife", "work": "butcher", "carry": "run_meat"},
 }
+## Quadro das animações de trabalho em que a ferramenta acerta o alvo.
+const IMPACT_FRAME := 1
 ## Machadadas (ciclos da animação) para arrancar um toco.
 const UPROOT_SWINGS := 3
 
@@ -76,6 +83,7 @@ func _ready() -> void:
 	add_to_group(PhysicsLayers.GROUP_UNITS)
 	_sprite.sprite_frames = _build_frames()
 	_sprite.animation_looped.connect(_on_animation_looped)
+	_sprite.frame_changed.connect(_on_frame_changed)
 	# Origem do nó nos pés, para o y_sort ordenar corretamente.
 	_sprite.offset = Vector2(0, FRAME_SIZE.y / 2.0 - FEET_Y)
 	_start_idle()
@@ -211,6 +219,12 @@ func _arrive_at_source() -> void:
 		_sprite.play("chop")
 	else:
 		_finish_task()
+
+
+## No quadro do impacto o recurso reage; a contagem do golpe acontece ao fim do ciclo.
+func _on_frame_changed() -> void:
+	if _state == State.GATHER and _sprite.frame == IMPACT_FRAME:
+		_source.react_to_hit(position)
 
 
 ## Chamado a cada ciclo completo de uma animação em loop; trabalhando, cada ciclo é um golpe.
@@ -351,4 +365,7 @@ func _build_frames() -> SpriteFrames:
 	SpriteSheets.add_animation(frames, "run_pickaxe", RUN_PICKAXE_TEXTURE, FRAME_SIZE, 10.0)
 	SpriteSheets.add_animation(frames, "run_gold", RUN_GOLD_TEXTURE, FRAME_SIZE, 10.0)
 	SpriteSheets.add_animation(frames, "mine", MINE_TEXTURE, FRAME_SIZE, 10.0)
+	SpriteSheets.add_animation(frames, "run_knife", RUN_KNIFE_TEXTURE, FRAME_SIZE, 10.0)
+	SpriteSheets.add_animation(frames, "run_meat", RUN_MEAT_TEXTURE, FRAME_SIZE, 10.0)
+	SpriteSheets.add_animation(frames, "butcher", BUTCHER_TEXTURE, FRAME_SIZE, 8.0)
 	return frames
